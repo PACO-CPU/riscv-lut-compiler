@@ -1,0 +1,3 @@
+*.o
+/riscv-lut-compiler
+/make.incl
