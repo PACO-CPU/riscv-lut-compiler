@@ -14,7 +14,7 @@ for root,dirs,files in os.walk("."):
     (fc,fe)=os.path.splitext(fn)
     fe=fe.lower()
 
-    if fe in { ".c", ".cpp" }:
+    if fe in { ".c", ".cpp", ".cc" }:
       obj="%s.o"%fc
       p=sp.Popen(
         ["gcc"]+CXXFLAGS+["-MM","-MT",obj,fn],

@@ -3,10 +3,11 @@
 
 #include "error.h"
 #include "segment.h"
-
+extern "C" {
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+}
 /** Represents a single weights table as specified in weights data files.
   
   */
@@ -27,6 +28,10 @@ class WeightsTable {
         * at that point.
         */
       int    lref;
+
+      bool contains(const seg_data_t &p) {
+        return ((start<=p) && (end>=p));
+      }
 
 
     };

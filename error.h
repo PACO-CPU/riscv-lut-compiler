@@ -26,4 +26,22 @@ class FileIOException : public std::exception {
     }
 };
 
+/** Exception thrown when a syntax error occurs during the parsing of a file.
+  */
+class SyntaxError : public std::exception {
+  protected:
+    alp::string _msg;
+  public:
+    /** Constructor.
+      * \param desc Description of the syntax error.
+      */
+    SyntaxError(const alp::string &desc) {
+      _msg="Syntax error: "+desc;
+    }
+
+    virtual const char *what() const noexcept {
+      return _msg.ptr;
+    }
+};
+
 #endif
