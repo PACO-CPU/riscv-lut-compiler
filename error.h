@@ -43,5 +43,38 @@ class SyntaxError : public std::exception {
       return _msg.ptr;
     }
 };
+/** Exception thrown when an error occurs during the parsing of a command line.
+  */
+class CommandLineError : public std::exception {
+  public:
+    enum kind_t {
+      UnknownSwitch,
+      StrayArgument,
+      MissingArgument,
+      Semantics
+    }; 
+  protected:
+    alp::string _msg;
+    kind_t _kind;
+  public:
+    /** Constructor.
+      * \param desc Description of the syntax error.
+      */
+    CommandLineError(kind_t kind, const alp::string &desc) {
+      _kind=kind;
+      switch(kind) {
+        case UnknownSwitch:   _msg="Unknown switch: "+desc; break;
+        case StrayArgument:   _msg="Stray argument: "+desc; break;
+        case MissingArgument: _msg="Missing argument for "+desc; break;
+        case Semantics      : _msg=desc; break;
+      }
+    }
+
+    kind_t kind() const { return _kind; }
+
+    virtual const char *what() const noexcept {
+      return _msg.ptr;
+    }
+};
 
 #endif

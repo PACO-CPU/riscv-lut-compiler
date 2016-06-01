@@ -1,24 +1,33 @@
 #ifndef RISCV_LUT_COMPILER_OPTIONS_H
 #define RISCV_LUT_COMPILER_OPTIONS_H
-
+#include <alpha/alpha.h>
+#include <stdio.h>
 struct options_t {
-  
+  enum {
+    Default_maxWeightSteps = 1000,
+  };
   // options go here.
   
   
   int fInputIntermediate;
+  int fInputWeights;
 
   int fOutputIntermediate;
   int fOutputAssembly;
-
+  
+  int maxWeightSteps;
+  
+  alp::string fnInput;
   alp::string fnArch;
   alp::string lutName;
   alp::string outputName;
 
   options_t() : 
     fInputIntermediate(0),
+    fInputWeights(0),
     fOutputIntermediate(0),
-    fOutputAssembly(0)
+    fOutputAssembly(0),
+    maxWeightSteps(Default_maxWeightSteps)
     // strings initialize themselves
     {
   }
@@ -41,8 +50,12 @@ struct options_t {
     * occurred and the program should be terminated with error condition and
     * 2 if the program should be terminated normally (e.g. if a --help switch 
     * was handled)
+    * 
+    * \throw CommandLineError The command line is invalid.
     */
   int parseCommandLine(int argn, const char **argv);
+
+  void computeOutputName();
 
 };
 
