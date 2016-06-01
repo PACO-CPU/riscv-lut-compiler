@@ -81,6 +81,30 @@ static int run_weights_test(options_t &options) {
 }
 
 
+static int run_lut_compilation(options_t &options) {
+  LookupTable *lut=new LookupTable();
+  try {
+    if (options.fInputIntermediate) {
+      // todo: load intermediate
+    } else {
+      lut->parseInputFile(options.fnInput.ptr);
+    }
+  } catch(FileIOException &e) {
+    fprintf(
+      stderr,"\x1b[31;1mError loading lut file: %s\x1b[30;0m\n",
+      e.what());
+    return 1;
+  } catch(SyntaxError &e) {
+    fprintf(
+      stderr,"\x1b[31;1mError parsing lut file %s: %s\x1b[30;0m\n",
+      options.fnInput.ptr,e.what());
+    return 1;
+  }
+  // todo: perform compilation
+  // todo: perform output
+  return 0;
+}
+
 int main(int argn, char **argv) {
   options_t options;
 
@@ -101,8 +125,9 @@ int main(int argn, char **argv) {
 
   if (options.fInputWeights) {
     return run_weights_test(options);
+  } else {
+    return run_lut_compilation(options);
   }
 
-  // todo: implement tool flow for lut compilation
   return 0;
 }
