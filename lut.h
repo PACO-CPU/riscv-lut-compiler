@@ -24,7 +24,7 @@ class LookupTable {
       */
     alp::string _ident;
 
-    alp::array_t<keyvalue_t> _keyvalues;
+    alp::array_t<KeyValue*> _keyvalues;
     target_function_t _target_function;
 
     alp::array_t<segment_t> _segments;
@@ -39,16 +39,18 @@ class LookupTable {
     /** Getter for this LUT's identifier */
     const alp::string &ident() const { return _ident;}
     
-    /** Returns true iff we have a keyvalue of the given name. */
-    bool hasKeyValue(const alp::string &key) const;
-    
     /** Attempts to retrieve a named key-value.
       *
       * \param key Name of the keyvalue to retrieve.
-      * \param val Value of the keyvalue, if available. 
-      * \return True iff the keyvalue was read successfully.
+      * \return index of the keyvalue or -1 if it was not found.
       */
-    bool getKeyValue(const alp::string &key, keyvalue_t &val) const;
+    ssize_t findKeyValue(const alp::string &key) const;
+    /** Attempts to retrieve a named key-value.
+      *
+      * \param key Name of the keyvalue to retrieve.
+      * \return Pointer to the keyvalue if it exists, NULL otherwise.
+      */
+    KeyValue *getKeyValue(const alp::string &key) const;
     
     /** Parses an input format buffer and integrates its content into this
       * instance.
