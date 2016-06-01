@@ -350,6 +350,96 @@ template <class C> struct string_t {
     return string_t(ptr,maxlen);
   }
 
+  template<class S> static string_t Unescape(const S *ptr, ssize_t len=-1) {
+    if (len<0) len=utfcharlen(ptr);
+    const S *p=ptr, *e=ptr+len;
+    dchar c;
+    string_t res;
+    enum state_t {
+      Base,
+      EscapeBegin,
+      ParseOctal,
+      ParseHex,
+    };
+    state_t state=Base;
+    int nDigits;
+    dchar cParsed=0;
+    
+
+    while(p<e) {
+      utfdecode(p,c);
+      switch(state) {
+        case Base: Base:
+          if (c=='\\') state=EscapeBegin;
+          else res+=c;
+          break;
+        case EscapeBegin:
+          switch(c) {
+            default:
+              res+=c;
+              state=Base;
+              break;
+            case 'a': res+='\a'; state=Base; break;
+            case 'b': res+='\b'; state=Base; break;
+            case 'f': res+='\f'; state=Base; break;
+            case 'n': res+='\n'; state=Base; break;
+            case 'r': res+='\r'; state=Base; break;
+            case 't': res+='\t'; state=Base; break;
+            case 'v': res+='\v'; state=Base; break;
+            case 'x':
+              nDigits=2;
+              state=ParseHex;
+              break;
+            case 'u':
+              nDigits=4;
+              state=ParseHex;
+              break;
+            case 'U':
+              nDigits=6;
+              state=ParseHex;
+              break;
+            case '0': case '1': case '2': case '3': case '4': case '5':
+            case '6': case '7':
+              state=ParseOctal;
+              nDigits=2;
+              cParsed=c-'0';
+              break;
+          }
+          break;
+        #define ADDDIGIT(shamt,dig) { \
+          cParsed=(cParsed<<shamt)|(dig); \
+          if ((--nDigits<1) || (p>=e)) { \
+            res+=cParsed; \
+            state=Base; \
+          } \
+        }
+        case ParseOctal:
+          if ((c>='0') && (c<='7')) ADDDIGIT(3,c-'0')
+          else {
+            res+=cParsed;
+            state=Base;
+            goto Base;
+          }
+          break;
+        case ParseHex:
+          if ((c>='0') && (c<='7')) ADDDIGIT(4,c-'0')
+          else if ((c>='a')&&(c<='f')) ADDDIGIT(4,c-'a'+10)
+          else if ((c>='A')&&(c<='F')) ADDDIGIT(4,c-'A'+10)
+          else {
+            res+=cParsed;
+            state=Base;
+            goto Base;
+          }
+          break;
+          #undef ADDDIGIT
+      }
+    }
+
+    return res;
+    
+
+  }
+
   int codepoints() const {
     dchar c;
     const C *p=ptr, *e=ptr+len;
