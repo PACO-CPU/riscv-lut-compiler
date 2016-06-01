@@ -28,6 +28,7 @@ class WeightsTable {
         * at that point.
         */
       int    lref;
+      
 
       bool contains(const seg_data_t &p) {
         return ((start<=p) && (end>=p));
@@ -36,6 +37,9 @@ class WeightsTable {
 
     };
   protected:
+    /** Holds true iff all interval boundaries are integers. */
+    bool _isAllIntegers;
+
     /** The lua state used for interpreting our segment data points */
     lua_State *_l;
     
@@ -58,7 +62,9 @@ class WeightsTable {
     /** Removes all ranges, leaving the weights table as it was right after
       * construction.*/
     void clear();
-    
+   
+    /** Returns true iff all the range boundaries are integers */
+    bool isAllIntegers() const { return _isAllIntegers;}
     /** Parses a weights file and *adds* the defined ranges to our own.
       *
       * \param ptr Pointer to the beginning of the buffer to parse.
@@ -71,6 +77,17 @@ class WeightsTable {
       * \throw FileIOException The file could not be read.
       */
     void parseWeightsFile(const char *fn);
+   
+    /** Returns the lower bound of the first interval */
+    seg_data_t first() const {
+      if (_ranges.len<0) return (int64_t)0;
+      return _ranges[0].start;
+    }
+    /** Returns the upper bound of the last interval */
+    seg_data_t last() const {
+      if (_ranges.len<0) return (int64_t)0;
+      return _ranges[_ranges.len-1].end;
+    }
     
     /** Returns the weight value at a specific point.
       * 

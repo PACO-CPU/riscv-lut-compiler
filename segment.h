@@ -66,16 +66,19 @@ struct seg_data_t {
 
   operator int64_t() const {
     switch(kind) {
+      default:
       case Integer: return (int64_t)data_f;
       case Double:  return data_i;
     }
   }
   operator double() const {
     switch(kind) {
+      default:
       case Integer: return (double)data_i;
       case Double:  return data_f;
     }
   }
+
 };
 
 

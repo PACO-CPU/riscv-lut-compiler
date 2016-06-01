@@ -11,7 +11,8 @@
 
 #include <iostream>
 
-WeightsTable::WeightsTable() {
+WeightsTable::WeightsTable() :
+  _isAllIntegers(true) {
   _l=luaL_newstate();
   // todo: expose all math table contents as globals
   luaL_openlibs(_l);
@@ -24,7 +25,10 @@ WeightsTable::~WeightsTable() {
 }
 
 void WeightsTable::clear() {
-
+  _isAllIntegers=true;
+  for(size_t i=0;i<_ranges.len;i++)
+    luaL_unref(_l,LUA_REGISTRYINDEX,_ranges[i].lref);
+  _ranges.clear();
 }
 
 void WeightsTable::parseWeights(const char *ptr, size_t cb) {
@@ -93,6 +97,12 @@ void WeightsTable::parseWeights(const char *ptr, size_t cb) {
     }
     
     _ranges.insert(newRange,idx);
+
+    if (
+      _isAllIntegers && (
+        (newRange.start.kind!=seg_data_t::Integer) ||
+        (newRange.end.kind  !=seg_data_t::Integer))) 
+      _isAllIntegers=false;
 
   }
 
