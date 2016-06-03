@@ -31,10 +31,8 @@ void WeightsTable::clear() {
   _ranges.clear();
 }
 
-void WeightsTable::parseWeights(const char *ptr, size_t cb) {
-  membuf_read_t in_buf=membuf_read_t(ptr,cb);
-  std::istream *in_stream=new std::istream(&in_buf);
-  WeightsFlexLexer *lex=new WeightsFlexLexer(in_stream);
+void WeightsTable::parseWeights(const char *ptr, size_t cb, const char *name) {
+  WeightsFlexLexer *lex=WeightsFlexLexer::New(ptr,cb,name);
 
   range_t newRange;
   
@@ -42,15 +40,15 @@ void WeightsTable::parseWeights(const char *ptr, size_t cb) {
     switch(lex->kind()) {
       case WeightsFlexLexer::TOK_LPAREN: // ( number , number ) = expression
         if (lex->yylex()!=WeightsFlexLexer::TOK_NUMBER)
-          throw SyntaxError("number expected");
+          throw SyntaxError("number expected",lex);
         newRange.start=lex->numAttr();
         if (lex->yylex()!=WeightsFlexLexer::TOK_COMMA)
-          throw SyntaxError("',' expected");
+          throw SyntaxError("',' expected",lex);
         if (lex->yylex()!=WeightsFlexLexer::TOK_NUMBER)
-          throw SyntaxError("number expected");
+          throw SyntaxError("number expected",lex);
         newRange.end=lex->numAttr();
         if (lex->yylex()!=WeightsFlexLexer::TOK_RPAREN)
-          throw SyntaxError("')' expected");
+          throw SyntaxError("')' expected",lex);
 
         break;
 
@@ -59,12 +57,12 @@ void WeightsTable::parseWeights(const char *ptr, size_t cb) {
         break;
 
       default:
-        throw SyntaxError("number or '(' expected");
+        throw SyntaxError("number or '(' expected",lex);
     }
 
 
     if (lex->yylex()!=WeightsFlexLexer::TOK_EXPRESSION)
-      throw SyntaxError("expression expected");
+      throw SyntaxError("expression expected",lex);
     
     const alp::string expr="return "+lex->exprAttr();
     size_t idx;
@@ -72,7 +70,7 @@ void WeightsTable::parseWeights(const char *ptr, size_t cb) {
     if (luaL_loadbuffer(_l,expr.ptr,expr.len,"")!=0) {
       alp::string msg=lua_tostring(_l,-1);
       lua_pop(_l,1);
-      throw SyntaxError("Lua error: "+msg);
+      throw SyntaxError("Lua error: "+msg,lex);
     }
     newRange.lref=luaL_ref(_l,LUA_REGISTRYINDEX);
 
@@ -107,7 +105,6 @@ void WeightsTable::parseWeights(const char *ptr, size_t cb) {
   }
 
   delete lex;
-  delete in_stream;
 
 }
 
@@ -134,7 +131,7 @@ void WeightsTable::parseWeightsFile(const char *fn) {
   fclose(f);
 
   try {
-    parseWeights(buf,cb);
+    parseWeights(buf,cb,fn);
   } catch(SyntaxError &e) {
     free((void*)buf);
     throw e;

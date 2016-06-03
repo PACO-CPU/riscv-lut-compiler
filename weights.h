@@ -70,11 +70,13 @@ class WeightsTable {
       * \param ptr Pointer to the beginning of the buffer to parse.
       * \param cb Length of the buffer to parse, in bytes.
       */
-    void parseWeights(const char *ptr, size_t cb);
+    void parseWeights(const char *ptr, size_t cb, const char *name=NULL);
     /** Uses parseWeights to parse a weights file.
       *
       * \param fn File name to load and parse from. 
       * \throw FileIOException The file could not be read.
+      * \param name Name used to identify the compilation unit in debug/error
+      * output
       */
     void parseWeightsFile(const char *fn);
    

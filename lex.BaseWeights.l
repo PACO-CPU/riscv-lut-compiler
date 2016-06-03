@@ -1,6 +1,11 @@
 
 %{
 #include "weights-lexer.h"
+#define EMIT_SYMBOL(tok) { \
+  _loc_last=_loc; \
+  _loc+=strlen(yytext);  \
+  return (_kind=tok); \
+}
 %}
 
 %option c++
@@ -8,7 +13,8 @@
 %option prefix="BaseWeights"
 %option yyclass="WeightsFlexLexer"
 
-ws [ \t\r\n]+
+ws [ \t]+
+nl [\r]?[\n]
 
 integer -?(0[xX][0-9a-fA-F]+|0[0-7]*|[1-9][0-9]*)
 float    -?[0-9]*[.][0-9]*([eE][+-]?[0-9]+)?
@@ -18,18 +24,38 @@ any (.|[\r\n])
 
 %%
 
-{ws}
+{ws}      { _loc+=strlen(yytext); }
+{nl}      { _loc.newline(strlen(yytext)); }
 
-{integer} { _numAttr=strtol(yytext,NULL,0); return (_kind=TOK_NUMBER); }
-{float} { _numAttr=strtod(yytext,NULL); return (_kind=TOK_NUMBER); }
+{integer} { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  _numAttr=strtol(yytext,NULL,0); 
+  return (_kind=TOK_NUMBER); 
+}
+{float}   { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  _numAttr=strtod(yytext,NULL); 
+  return (_kind=TOK_NUMBER); 
+}
 
-"(" { return (_kind=TOK_LPAREN); }
-")" { return (_kind=TOK_RPAREN); }
-"," { return (_kind=TOK_COMMA); }
+"(" { EMIT_SYMBOL(TOK_LPAREN); }
+")" { EMIT_SYMBOL(TOK_RPAREN); }
+"," { EMIT_SYMBOL(TOK_COMMA); }
 
-{expression} { _exprAttr=yytext+1; return (_kind=TOK_EXPRESSION);  }
+{expression} { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  _exprAttr=yytext+1; 
+  return (_kind=TOK_EXPRESSION);  
+}
 
-{any} { return (_kind=TOK_INVALID); }
+{any} { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  return (_kind=TOK_INVALID); 
+}
 
 %%
 
