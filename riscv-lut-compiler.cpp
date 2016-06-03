@@ -99,7 +99,14 @@ static int run_lut_compilation(options_t &options) {
       stderr,"\x1b[31;1mError parsing lut file %s: %s\x1b[30;0m\n",
       options.fnInput.ptr,e.what());
     return 1;
+  } catch(RuntimeError &e) {
+    fprintf(
+      stderr,"\x1b[31;1mError evaluating lut file %s: %s\x1b[30;0m\n",
+      options.fnInput.ptr,e.what());
+    return 1;
+    
   }
+  
   // todo: perform compilation
   // todo: perform output
   return 0;

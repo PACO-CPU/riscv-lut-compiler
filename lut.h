@@ -5,6 +5,8 @@
 #include "keyvalue.h"
 #include "segment.h"
 #include "target-function.h"
+#include "util.h"
+#include "dlib.h"
 
 #include <alpha/alpha.h>
 
@@ -17,12 +19,23 @@
   * interpreted as well and stored in appropriate fields.
   */
 class LookupTable {
+  public:
+    typedef void (*target_func_t)(seg_data_t *res, const seg_data_t *arg0);
   protected:
     
     /** Lookup table identifier generated *externally* and guaranteed to be 
       * unique among all Lookup tables used in a single program.
       */
     alp::string _ident;
+    
+    alp::string _target_name;
+    target_type_t _target_result_type;
+    alp::array_t<target_type_t> _target_argument_types;
+    
+    dynamic_library_t *_target_lib;
+    target_func_t _target_func;
+
+    alp::string _c_code;
 
     alp::array_t<KeyValue*> _keyvalues;
     target_function_t _target_function;
@@ -35,6 +48,8 @@ class LookupTable {
       * Creates an emtpy Lookup table.
       */
     LookupTable();
+
+    ~LookupTable();
     
     /** Getter for this LUT's identifier */
     const alp::string &ident() const { return _ident;}
@@ -123,6 +138,10 @@ class LookupTable {
       * \throw FileIOException The file could not be written to.
       */
     void saveOutputFile(const char *fn);
+
+
+    void evaluate(const seg_data_t &arg, seg_data_t &res);
+    seg_data_t evaluate(const seg_data_t &arg);
 
 
 };

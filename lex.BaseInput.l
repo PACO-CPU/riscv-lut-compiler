@@ -1,6 +1,11 @@
 
 %{
 #include "input-lexer.h"
+#define EMIT_SYMBOL(tok) { \
+  _loc_last=_loc; \
+  _loc+=strlen(yytext);  \
+  return (_kind=tok); \
+}
 %}
 
 %option c++
@@ -10,23 +15,17 @@
 
 ws [ \t]+
 nl [\r]?[\n]
-emptyLine [\r\n][ \t]*[\r\n]
 
 ident ([_a-zA-Z])[_a-zA-Z0-9]*
 string \"([^"]+|[\]["])*\"
 integer -?(0[xX][0-9a-fA-F]+|0[0-7]*|[1-9][0-9]*)
 float    -?[0-9]*[.][0-9]*([eE][+-]?[0-9]+)?
 
-any (.|[\r\n])
+any .
 
 %%
 
 
-
-{emptyLine} { 
-  _loc_last=_loc; _loc.newline(strlen(yytext),2);
-  return (_kind=TOK_EMPTY_LINE); 
-}
 
 {ws}      { _loc+=strlen(yytext); }
 {nl}      { _loc.newline(strlen(yytext)); }
@@ -55,11 +54,9 @@ any (.|[\r\n])
   return (_kind=TOK_STRING); 
 }
 
-"=" { 
-  _loc_last=_loc; 
-  _loc+=strlen(yytext); 
-  return (_kind=TOK_EQUALS); 
-}
+"=" { EMIT_SYMBOL(TOK_EQUALS); }
+"%%" { EMIT_SYMBOL(TOK_SEPARATOR); }
+"->" { EMIT_SYMBOL(TOK_ARROW); }
 
 {any} { 
   _loc_last=_loc; 

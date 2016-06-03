@@ -14,7 +14,8 @@ class InputFlexLexer : public BaseInputFlexLexer, public SourceLocationLexer {
     enum {
       TOK_INVALID=1,
       TOK_EQUALS,
-      TOK_EMPTY_LINE,
+      TOK_ARROW,
+      TOK_SEPARATOR,
       TOK_IDENT,
       TOK_NUMBER,
       TOK_STRING,
