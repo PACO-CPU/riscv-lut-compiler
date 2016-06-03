@@ -117,7 +117,7 @@ class LookupTable {
       * @param pcb Pointer to a size_t variable receiving the length of the
       * buffer. This does *not* include the terminating null character.
       */
-    void generateIntermediateFormat(char **pptr, size_t *pcb);
+    void generateIntermediateFormat(alp::string &res);
     /** Writes a representation of this Lookup table to an intermediate file.
       *
       * \param fn File name to write to

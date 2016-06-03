@@ -353,6 +353,45 @@ void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
   _segments.insert(seg,idx);
 }
 
+void LookupTable::generateIntermediateFormat(alp::string &res) {
+  res.clear();
+  res+=alp::string::Format("name \"%s\"\n",_ident.ptr);
+  for(size_t i=0;i<_segments.len;i++) {
+    res+="segment";
+    #define addnum(v) \
+      switch(v.kind) { \
+        case seg_data_t::Integer: \
+          res+=alp::string::Format(" %lli",v.data_i); \
+          break; \
+        case seg_data_t::Double: \
+          res+=alp::string::Format(" %lf",v.data_f); \
+          break; \
+      }
+    addnum(_segments[i].x0);
+    addnum(_segments[i].x1);
+    addnum(_segments[i].y0);
+    addnum(_segments[i].y1);
+    res+="\n";
+
+  }
+}
+
+void LookupTable::saveIntermediateFile(const char *fn) {
+  alp::string data;
+  FILE *f;
+  generateIntermediateFormat(data);
+
+  f=fopen(fn,"wb");
+  if (!f) throw FileIOException(fn);
+  
+  if (fwrite(data.ptr,1,data.len,f)<data.len) {
+    fclose(f);
+    throw FileIOException(fn);
+  }
+
+  fclose(f);
+}
+
 void LookupTable::evaluate(const seg_data_t &arg, seg_data_t &res) {
   // if _target_func is NULL, the caller was not careful enough.
   assert( (_target_func!=NULL) && "Target function was not loaded" );

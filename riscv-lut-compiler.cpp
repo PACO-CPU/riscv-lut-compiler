@@ -108,7 +108,15 @@ static int run_lut_compilation(options_t &options) {
   }
   
   // todo: perform compilation
-  // todo: perform output
+
+  options.computeOutputName();
+  if (options.fOutputIntermediate) {
+    lut->saveIntermediateFile(options.outputName.ptr);
+  } else if (options.fOutputAssembly) {
+    // todo: output assembly code
+  } else {
+    // todo: output elf 
+  }
   return 0;
 }
 
