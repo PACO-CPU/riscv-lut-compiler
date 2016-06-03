@@ -1,5 +1,6 @@
 #ifndef RISCV_LUT_COMPILER_ERROR_H
 #define RISCV_LUT_COMPILER_ERROR_H
+#include "lexer-common.h"
 #include <exception>
 #include <alpha/alpha.h>
 
@@ -35,8 +36,29 @@ class SyntaxError : public std::exception {
     /** Constructor.
       * \param desc Description of the syntax error.
       */
-    SyntaxError(const alp::string &desc) {
-      _msg="Syntax error: "+desc;
+    SyntaxError(const alp::string &desc, SourceLocationLexer *lex=NULL) {
+      source_location_t loc;
+      const char *pline, *p, *e;
+      if (lex!=NULL) {
+        loc=lex->loc();
+
+        pline=lex->ptr();
+        e=pline+lex->cb();
+        pline+=loc.raw_offset-loc.cidx;
+        for(p=pline+loc.cidx;p<e;p++) if ((*p=='\r')||(*p=='\n')) break;
+
+
+        _msg=alp::string::Format(
+          "\x1b[1m%s:%i:%i: \x1b[31;1merror: \x1b[30;0m%.*s\n%.*s\n",
+          lex->unitName(),loc.lidx,loc.cidx,
+          desc.len,desc.ptr,
+          (size_t)p-(size_t)pline,pline);
+        _msg.resize(_msg.len+loc.cidx+2,'-');
+        _msg.ptr[_msg.len-2]='^';
+        _msg.ptr[_msg.len-1]='\n';
+      } else {
+        _msg="Syntax error: "+desc;
+      }
     }
 
     virtual const char *what() const noexcept {

@@ -60,8 +60,10 @@ class LookupTable {
       *
       * @param ptr Pointer into the beginning of the buffer to read from.
       * @param cb Length of the buffer starting at ptr, in bytes.
+      * @param name Name used to identify the compilation unit in debug/error
+      * output
       */
-    void parseInput(const char *ptr, size_t cb);
+    void parseInput(const char *ptr, size_t cb, const char *name=NULL);
 
     /** Parses an input format file using parseInput.
       *

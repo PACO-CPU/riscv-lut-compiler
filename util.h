@@ -1,5 +1,5 @@
 #ifndef RISCV_LUT_COMPILER_UTIL_H
-#define RISCV_LUA_COMPILER_UTIL_H
+#define RISCV_LUT_COMPILER_UTIL_H
 
 #include <iostream>
 #include <istream>

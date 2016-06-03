@@ -23,15 +23,13 @@ KeyValue *LookupTable::getKeyValue(const alp::string &key) const {
 }
 
 
-void LookupTable::parseInput(const char *ptr, size_t cb) {
-  membuf_read_t in_buf=membuf_read_t(ptr,cb);
-  std::istream *in_stream=new std::istream(&in_buf);
-  InputFlexLexer *lex=new InputFlexLexer(in_stream);
-  
+void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
+  InputFlexLexer *lex=InputFlexLexer::New(ptr,cb,name);
   bool done=false;
   
   while(!done && (lex->yylex()!=0)) {
     printf("%i\n",lex->kind());
+    printf("loc: %i:%i (%i)\n",lex->loc().lidx,lex->loc().cidx,lex->loc().raw_offset);
     switch(lex->kind()) {
       case InputFlexLexer::TOK_IDENT: {
         alp::string name;
@@ -42,7 +40,7 @@ void LookupTable::parseInput(const char *ptr, size_t cb) {
         name=lex->strAttr();
         
         if (lex->yylex()!=InputFlexLexer::TOK_EQUALS)
-          throw SyntaxError("'=' expected");
+          throw SyntaxError("'=' expected",lex);
 
         switch(lex->yylex()) {
           case InputFlexLexer::TOK_NUMBER:
@@ -52,7 +50,7 @@ void LookupTable::parseInput(const char *ptr, size_t cb) {
             kv=new KeyValue(name,lex->strAttr());
             break;
           default:
-            throw SyntaxError("string or number expected");
+            throw SyntaxError("string or number expected",lex);
         }
 
         if ((idx0=findKeyValue(name))>-1) {
@@ -69,12 +67,11 @@ void LookupTable::parseInput(const char *ptr, size_t cb) {
         break;
 
       default:
-        throw SyntaxError("key-value or separator expected");
+        throw SyntaxError("key-value or separator expected",lex);
     }
   }
 
   delete lex;
-  delete in_stream;
 
 }
 
@@ -101,7 +98,7 @@ void LookupTable::parseInputFile(const char *fn) {
   fclose(f);
 
   try {
-    parseInput(buf,cb);
+    parseInput(buf,cb,fn);
   } catch(SyntaxError &e) {
     free((void*)buf);
     throw e;

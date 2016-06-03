@@ -8,7 +8,8 @@
 %option prefix="BaseInput"
 %option yyclass="InputFlexLexer"
 
-ws [ \t\r\n]+
+ws [ \t]+
+nl [\r]?[\n]
 emptyLine [\r\n][ \t]*[\r\n]
 
 ident ([_a-zA-Z])[_a-zA-Z0-9]*
@@ -20,19 +21,51 @@ any (.|[\r\n])
 
 %%
 
-{emptyLine} { return (_kind=TOK_EMPTY_LINE); }
-{ws}
-{ident} { _strAttr=yytext; return (_kind=TOK_IDENT); }
-{integer} { _numAttr=strtol(yytext,NULL,0); return (_kind=TOK_NUMBER); }
-{float} { _numAttr=strtod(yytext,NULL); return (_kind=TOK_NUMBER); }
-{string} { 
+
+
+{emptyLine} { 
+  _loc_last=_loc; _loc.newline(strlen(yytext),2);
+  return (_kind=TOK_EMPTY_LINE); 
+}
+
+{ws}      { _loc+=strlen(yytext); }
+{nl}      { _loc.newline(strlen(yytext)); }
+{ident}   { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  _strAttr=yytext; 
+  return (_kind=TOK_IDENT); 
+}
+{integer} { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  _numAttr=strtol(yytext,NULL,0); 
+  return (_kind=TOK_NUMBER); 
+}
+{float}   { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  _numAttr=strtod(yytext,NULL); 
+  return (_kind=TOK_NUMBER); 
+}
+{string}  {
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
   _strAttr=alp::string::Unescape(yytext+1,strlen(yytext)-2); 
   return (_kind=TOK_STRING); 
 }
 
-"=" { return (_kind=TOK_EQUALS); }
+"=" { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  return (_kind=TOK_EQUALS); 
+}
 
-{any} { return (_kind=TOK_INVALID); }
+{any} { 
+  _loc_last=_loc; 
+  _loc+=strlen(yytext); 
+  return (_kind=TOK_INVALID); 
+}
 
 %%
 
