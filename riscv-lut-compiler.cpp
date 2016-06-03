@@ -85,7 +85,7 @@ static int run_lut_compilation(options_t &options) {
   LookupTable *lut=new LookupTable();
   try {
     if (options.fInputIntermediate) {
-      // todo: load intermediate
+      lut->parseIntermediateFile(options.fnInput.ptr);
     } else {
       lut->parseInputFile(options.fnInput.ptr);
     }

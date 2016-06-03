@@ -96,12 +96,14 @@ class LookupTable {
       * @param ptr Pointer into the beginning of the buffer to read from.
       * @param cb Length of the buffer starting at ptr, in bytes.
       */
-    void parseIntermediate(const char *ptr, size_t cb);
+    void parseIntermediate(const char *ptr, size_t cb, const char *name=NULL);
 
     /** Parses an intermediate format file using parseIntermediate.
       *
       * @param fn File name of the file to be read
       * @throw FileIOException The given file could not be read.
+      * @param name Name used to identify the compilation unit in debug/error
+      * output
       */
     void parseIntermediateFile(const char *fn);
     
@@ -138,7 +140,17 @@ class LookupTable {
       * \throw FileIOException The file could not be written to.
       */
     void saveOutputFile(const char *fn);
-
+    
+    /** Adds a new segment into the LUT.
+      *
+      * \param seg Segment to insert.
+      * \param correctOverlap Set to true to adjust other segments to
+      * keep the set of segments disjoint. Otherwise it is expected not to
+      * overlap with any other segment.
+      * \throw RuntimeError The given segment overlaps with another segment
+      * and correctOverlap was set to false.
+      */
+    void addSegment(const segment_t &seg, bool correctOverlap);
 
     void evaluate(const seg_data_t &arg, seg_data_t &res);
     seg_data_t evaluate(const seg_data_t &arg);

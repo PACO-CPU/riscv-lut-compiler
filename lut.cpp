@@ -5,6 +5,11 @@
 #include <FlexLexer.h>
 #include "input-lexer.h"
 
+#undef yyFlexLexer
+#define yyFlexLexer BaseIntermediateFlexLexer
+#include <FlexLexer.h>
+#include "intermediate-lexer.h"
+
 LookupTable::LookupTable() :
   _target_lib(NULL),
   _target_func(NULL) {
@@ -232,6 +237,121 @@ void LookupTable::parseInputFile(const char *fn) {
   free((void*)buf);
 }
 
+void LookupTable::parseIntermediate(
+  const char *ptr, size_t cb, const char *name) {
+
+  IntermediateFlexLexer *lex=IntermediateFlexLexer::New(ptr,cb,name);
+  
+  bool identDefined=false;
+  segment_t newSegment;
+
+  while(lex->yylex()!=0) {
+    switch(lex->kind()) {
+      case IntermediateFlexLexer::TOK_KWNAME:
+        if (identDefined)
+          throw SyntaxError("name redefined",lex);
+        
+        if (lex->yylex()!=IntermediateFlexLexer::TOK_STRING)
+          throw SyntaxError("name expected",lex);
+
+        _ident=lex->strAttr();
+
+        if (lex->yylex()!=IntermediateFlexLexer::TOK_NEWLINE)
+          throw SyntaxError("newline expected",lex);
+        
+        identDefined=true;
+        break;
+
+      case IntermediateFlexLexer::TOK_KWSEGMENT:
+        #define ARG(id) \
+          if (lex->yylex()!=IntermediateFlexLexer::TOK_NUMBER) \
+            throw SyntaxError("number expected",lex); \
+          newSegment.id=lex->numAttr();
+
+        ARG(x0)
+        ARG(x1)
+        ARG(y0)
+        ARG(y1)
+
+        #undef ARG
+
+        addSegment(newSegment,false);
+
+        if (lex->yylex()!=IntermediateFlexLexer::TOK_NEWLINE)
+          throw SyntaxError("newline expected",lex);
+        
+        break;
+      case IntermediateFlexLexer::TOK_NEWLINE:
+        break;
+      default:
+        throw SyntaxError("'name' or 'segment' expected",lex);
+    }
+  }
+
+  if (!identDefined)
+    throw SyntaxError("no name defined",lex);
+  
+}
+void LookupTable::parseIntermediateFile(const char *fn) {
+  FILE *f=fopen(fn,"rb");
+  char *buf;
+  size_t cb;
+  if (!f) throw FileIOException(fn);
+
+  fseek(f,0,SEEK_END);
+  cb=ftell(f);
+  fseek(f,0,SEEK_SET);
+
+  buf=(char*)malloc(cb);
+  if (buf==NULL) {
+    fclose(f);
+    throw FileIOException(fn);
+  }
+
+  if (fread(buf,1,cb,f)<cb) {
+    fclose(f);
+    throw FileIOException(fn);
+  }
+  fclose(f);
+
+  try {
+    parseIntermediate(buf,cb,fn);
+  } catch(SyntaxError &e) {
+    free((void*)buf);
+    throw e;
+  }
+  free((void*)buf);
+}
+
+void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
+  size_t idx;
+  for (idx=0;idx<_segments.len;idx++) {
+    if (_segments[idx].x0>seg.x1) break; // we precede 
+    if (_segments[idx].x1<seg.x0) continue; // we succede
+
+    if (!correctOverlap)
+      throw RuntimeError(
+        alp::string::Format(
+          "the new segment (%g:%g) overlaps with another one",
+          (double)seg.x0,(double)seg.x1));
+    
+    if (_segments[idx].x0<seg.x1) {
+      // we supersede the ending -> crop the other one
+      _segments[idx].x1=seg.x0;
+
+    } else if (_segments[idx].x1>seg.x1) {
+      // we supersede the beginning -> crop the other one, done
+      _segments[idx].x0=seg.x1;
+
+      break; // we cannot touch the next one
+    } else {
+      // we overlap completely -> remove the other one
+      _segments.remove(idx);
+      idx--;
+    }
+  }
+  _segments.insert(seg,idx);
+}
 
 void LookupTable::evaluate(const seg_data_t &arg, seg_data_t &res) {
   // if _target_func is NULL, the caller was not careful enough.
