@@ -32,16 +32,12 @@ class FileIOException : public std::exception {
 class SyntaxError : public std::exception {
   protected:
     alp::string _msg;
-  public:
-    /** Constructor.
-      * \param desc Description of the syntax error.
-      */
-    SyntaxError(const alp::string &desc, SourceLocationLexer *lex=NULL) {
-      source_location_t loc;
+    void _common_ctor(
+      const alp::string &desc, 
+      SourceLocationLexer *lex, source_location_t &loc) {
+      
       const char *pline, *p, *e;
       if (lex!=NULL) {
-        loc=lex->loc();
-
         pline=lex->ptr();
         e=pline+lex->cb();
         pline+=loc.raw_offset-loc.cidx;
@@ -59,12 +55,57 @@ class SyntaxError : public std::exception {
       } else {
         _msg="Syntax error: "+desc;
       }
+
+    }
+  public:
+    /** Constructor.
+      * \param desc Description of the syntax error.
+      * \param lex Optional lexer to use for building the error message.
+      */
+    SyntaxError(const alp::string &desc, SourceLocationLexer *lex=NULL) {
+      source_location_t loc;
+      if (lex!=NULL) loc=lex->loc();
+      _common_ctor(desc,lex,loc);
+    }
+    /** Constructor.
+      * \param desc Description of the syntax error.
+      * \param lex Lexer to use for building the error message.
+      * \param loc_in Source location to refer to
+      */
+    SyntaxError(
+      const alp::string &desc, 
+      SourceLocationLexer *lex, const source_location_t &loc_in) {
+      source_location_t loc=loc_in;
+      if (loc.raw_offset>=lex->cb()) _common_ctor(desc,NULL,loc);
+      else _common_ctor(desc,lex,loc);
     }
 
     virtual const char *what() const noexcept {
       return _msg.ptr;
     }
 };
+
+/** Exception thrown when an error occurs during the execution of a job
+  */
+class RuntimeError : public std::exception {
+  protected:
+    alp::string _msg;
+  public:
+    /** Constructor.
+      * \param desc Description of the error..
+      */
+    RuntimeError(const alp::string &desc) :
+      _msg(desc) {
+    
+    }
+
+    virtual const char *what() const noexcept {
+      return _msg.ptr;
+    }
+};
+
+
+
 /** Exception thrown when an error occurs during the parsing of a command line.
   */
 class CommandLineError : public std::exception {
