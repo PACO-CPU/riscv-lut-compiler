@@ -4,7 +4,7 @@
 #include "error.h"
 #include "keyvalue.h"
 #include "segment.h"
-#include "target-function.h"
+#include "target-types.h"
 #include "util.h"
 #include "dlib.h"
 
@@ -28,19 +28,24 @@ class LookupTable {
       */
     alp::string _ident;
     
+    // fields loaded/generated from input files only:
+    alp::array_t<KeyValue*> _keyvalues;
+
     alp::string _target_name;
     target_type_t _target_result_type;
     alp::array_t<target_type_t> _target_argument_types;
+
+    alp::string _c_code;
     
     dynamic_library_t *_target_lib;
     target_func_t _target_func;
-
-    alp::string _c_code;
-
-    alp::array_t<KeyValue*> _keyvalues;
-    target_function_t _target_function;
-
+    
+    // segments (loaded from intermediate or generated from input)
     alp::array_t<segment_t> _segments;
+    
+    /** LUT configuration bitstream
+      */
+    alp::array_t<unsigned char> _config_bits;
 
   public:
     /** Constructor.
@@ -112,10 +117,7 @@ class LookupTable {
       *
       * The result is a null-terminated string in intermediate format.
       *
-      * @param pptr Pointer to a char pointer receiving the generated
-      * buffer.
-      * @param pcb Pointer to a size_t variable receiving the length of the
-      * buffer. This does *not* include the terminating null character.
+      * \param res String variable receiving the generated code.
       */
     void generateIntermediateFormat(alp::string &res);
     /** Writes a representation of this Lookup table to an intermediate file.
@@ -129,12 +131,12 @@ class LookupTable {
     
     /** Generates a representation of the Lookup table in final output format.
       *
-      * Outputs an assembly code file specifying a static constant data (bss)
-      * segment with a label for this Lookup table's identifier.
+      * Outputs C code defining a constant buffer of our configuration bits.
+      * \param res String variable receiving the generated code.
       */
-    void generateOutputFormat(char **pptr, size_t *pcb);
+    void generateOutputFormat(alp::string &res);
 
-    /** Saves the final assembly code output to a file.
+    /** Saves the final output code output to a file.
       *
       * \param fn File name to write to
       * \throw FileIOException The file could not be written to.

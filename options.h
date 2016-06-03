@@ -13,7 +13,7 @@ struct options_t {
   int fInputWeights;
 
   int fOutputIntermediate;
-  int fOutputAssembly;
+  int fOutputC;
   
   int maxWeightSteps;
   
@@ -26,7 +26,7 @@ struct options_t {
     fInputIntermediate(0),
     fInputWeights(0),
     fOutputIntermediate(0),
-    fOutputAssembly(0),
+    fOutputC(0),
     maxWeightSteps(Default_maxWeightSteps)
     // strings initialize themselves
     {

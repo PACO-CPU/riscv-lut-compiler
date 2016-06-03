@@ -36,6 +36,8 @@ KeyValue *LookupTable::getKeyValue(const alp::string &key) const {
 void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
   InputFlexLexer *lex=InputFlexLexer::New(ptr,cb,name);
 
+  TempDir tempdir;
+
   enum parse_state_t {
     Keyvalues,
     TargetFunction,
@@ -140,9 +142,8 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
     target code
     wrapper code
     */
-
-  // todo: automatically generate (AND cleanup) a temporary directory
-  alp::string workdir="/tmp/lut_test/";
+  
+  alp::string workdir=tempdir.path();
   alp::string libname=workdir+"target.so";
   FILE *f;
   int r;
@@ -322,37 +323,6 @@ void LookupTable::parseIntermediateFile(const char *fn) {
   }
   free((void*)buf);
 }
-
-void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
-  size_t idx;
-  for (idx=0;idx<_segments.len;idx++) {
-    if (_segments[idx].x0>seg.x1) break; // we precede 
-    if (_segments[idx].x1<seg.x0) continue; // we succede
-
-    if (!correctOverlap)
-      throw RuntimeError(
-        alp::string::Format(
-          "the new segment (%g:%g) overlaps with another one",
-          (double)seg.x0,(double)seg.x1));
-    
-    if (_segments[idx].x0<seg.x1) {
-      // we supersede the ending -> crop the other one
-      _segments[idx].x1=seg.x0;
-
-    } else if (_segments[idx].x1>seg.x1) {
-      // we supersede the beginning -> crop the other one, done
-      _segments[idx].x0=seg.x1;
-
-      break; // we cannot touch the next one
-    } else {
-      // we overlap completely -> remove the other one
-      _segments.remove(idx);
-      idx--;
-    }
-  }
-  _segments.insert(seg,idx);
-}
-
 void LookupTable::generateIntermediateFormat(alp::string &res) {
   res.clear();
   res+=alp::string::Format("name \"%s\"\n",_ident.ptr);
@@ -391,6 +361,66 @@ void LookupTable::saveIntermediateFile(const char *fn) {
 
   fclose(f);
 }
+
+void LookupTable::generateOutputFormat(alp::string &res) {
+  res.clear();
+  res+=alp::string::Format(
+    "const char %s_config[%i]=\"",
+    _ident.ptr,_config_bits.len);
+  
+  for(size_t i=0;i<_config_bits.len;i++) {
+    res+=alp::string::Format("\\x%.2x",_config_bits[i]);
+  }
+
+  res+="\";\n";
+}
+
+void LookupTable::saveOutputFile(const char *fn) {
+  alp::string data;
+  FILE *f;
+  generateOutputFormat(data);
+
+  f=fopen(fn,"wb");
+  if (!f) throw FileIOException(fn);
+  
+  if (fwrite(data.ptr,1,data.len,f)<data.len) {
+    fclose(f);
+    throw FileIOException(fn);
+  }
+
+  fclose(f);
+}
+
+void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
+  size_t idx;
+  for (idx=0;idx<_segments.len;idx++) {
+    if (_segments[idx].x0>seg.x1) break; // we precede 
+    if (_segments[idx].x1<seg.x0) continue; // we succede
+
+    if (!correctOverlap)
+      throw RuntimeError(
+        alp::string::Format(
+          "the new segment (%g:%g) overlaps with another one",
+          (double)seg.x0,(double)seg.x1));
+    
+    if (_segments[idx].x0<seg.x1) {
+      // we supersede the ending -> crop the other one
+      _segments[idx].x1=seg.x0;
+
+    } else if (_segments[idx].x1>seg.x1) {
+      // we supersede the beginning -> crop the other one, done
+      _segments[idx].x0=seg.x1;
+
+      break; // we cannot touch the next one
+    } else {
+      // we overlap completely -> remove the other one
+      _segments.remove(idx);
+      idx--;
+    }
+  }
+  _segments.insert(seg,idx);
+}
+
 
 void LookupTable::evaluate(const seg_data_t &arg, seg_data_t &res) {
   // if _target_func is NULL, the caller was not careful enough.

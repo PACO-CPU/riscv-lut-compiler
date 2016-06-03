@@ -16,8 +16,8 @@ void options_t::print(FILE *f) {
     "  -i|--intermediate\n"
     "    Output an intermediate representation of the generated LUT instead \n"
     "    of building its bitstream.\n"
-    "  -a|--assembly\n"
-    "    Output assembly code of the final bitstream instead of compiling it \n"
+    "  -C|--ouptut-c\n"
+    "    Output C code of the final bitstream instead of compiling it \n"
     "    to ELF.\n"
     "  -c|--compile\n"
     "    Input an intermediate format instead of the input format.\n"
@@ -61,7 +61,7 @@ int options_t::parseCommandLine(int argn, const char **argv) {
     case Idle:
       if (argv[i][0]=='-') {
         if (SWITCH("-i","--intermediate")) fOutputIntermediate=1;
-        else if (SWITCH("-a","--assembly")) fOutputAssembly=1;
+        else if (SWITCH("-C","--output-c")) fOutputC=1;
         else if (SWITCH("-c","--compile")) fInputIntermediate=1;
         else if (SWITCH("-w","--weights-test")) fInputWeights=1;
         else if (SWITCH("-n","--name")) state=Name;
@@ -125,9 +125,9 @@ int options_t::parseCommandLine(int argn, const char **argv) {
     throw CommandLineError(
       CommandLineError::Semantics,"no input file specified");
 
-  if (fOutputIntermediate && fOutputAssembly)
+  if (fOutputIntermediate && fOutputC)
     throw CommandLineError(
-      CommandLineError::Semantics,"cannot specify -a and -i together");
+      CommandLineError::Semantics,"cannot specify -C and -i together");
 
   if (fInputIntermediate && fInputWeights)
     throw CommandLineError(
@@ -157,8 +157,8 @@ void options_t::computeOutputName() {
     outputName+=".dat";
   } else if (fOutputIntermediate) {
     outputName+=".lut";
-  } else if (fOutputAssembly) {
-    outputName+=".s";
+  } else if (fOutputC) {
+    outputName+=".c";
   } else {
     outputName+=".o";
   }
