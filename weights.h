@@ -82,12 +82,12 @@ class WeightsTable {
    
     /** Returns the lower bound of the first interval */
     seg_data_t first() const {
-      if (_ranges.len<0) return (int64_t)0;
+      if (_ranges.len<1) return (int64_t)0;
       return _ranges[0].start;
     }
     /** Returns the upper bound of the last interval */
     seg_data_t last() const {
-      if (_ranges.len<0) return (int64_t)0;
+      if (_ranges.len<1) return (int64_t)0;
       return _ranges[_ranges.len-1].end;
     }
     

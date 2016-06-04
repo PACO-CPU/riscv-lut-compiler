@@ -27,7 +27,8 @@ class KeyValue {
     }
     
     KeyValue(const alp::string &name, const seg_data_t &val) :
-      _name(name), _kind(String), _val_num(val) {
+      _name(name), _kind(val.kind==seg_data_t::Double ? Float : Integer), 
+      _val_num(val) {
 
     }
 

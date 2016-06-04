@@ -148,7 +148,6 @@ template<class C> struct array_t {
   }
   
   void insert(C *items, size_t count, ssize_t before=-1) {
-    size_t i;
     size_t len0=len;
     setlen(len+count);
     
@@ -388,7 +387,6 @@ template<class C> struct sorted_array_t {
   }
   
   ~sorted_array_t() {
-    size_t i;
     if (owned&&ptr) {
       free((void*)ptr);
     }
@@ -411,7 +409,6 @@ template<class C> struct sorted_array_t {
   
   void make_unique() {
     C *ptr1;
-    size_t i;
     if (owned) return;
     if (ptr) {
       ptr1=(C*)malloc(ce_alloc*sizeof(C));
@@ -482,7 +479,6 @@ template<class C> struct sorted_array_t {
   }
   
   void remove(size_t first, size_t count=1) {
-    size_t i;
     if (first>=len) return;
     if (first+count>len) count=len-first;
     if (count<1) return;
@@ -499,7 +495,6 @@ template<class C> struct sorted_array_t {
   C const &operator[](int idx) const { return *(ptr+idx); }
   
   void clear() {
-    size_t i;
     
     if (owned&&ptr)
       free((void*)ptr);
