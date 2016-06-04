@@ -7,6 +7,7 @@
 #include "segment.h"
 #include "lexer-common.h"
 #include "util.h"
+#include "strategy-def.h"
 #include <alpha/alpha.h>
 
 class BoundsFlexLexer : 
@@ -18,7 +19,13 @@ class BoundsFlexLexer :
       TOK_RPAREN,
       TOK_COMMA,
       TOK_NUMBER,
-      TOK_IDENT
+      TOK_IDENT,
+
+      TOK_SEGMENT_STRATEGY,
+      TOK_APPROX_STRATEGY,
+     
+
+
     };
   protected:
     /** Current source location of the scanner.
@@ -30,6 +37,8 @@ class BoundsFlexLexer :
 
     seg_data_t _numAttr;
     alp::string _strAttr;
+    segment_strategy::id_t _segmentStrategyAttr;
+    approx_strategy::id_t _approxStrategyAttr;
 
     const char *_code;
     size_t      _cb_code;
@@ -69,8 +78,15 @@ class BoundsFlexLexer :
     virtual int yylex();
 
     int kind() const { return _kind; }
+
     const seg_data_t &numAttr() { return _numAttr; }
     const alp::string &strAttr() { return _strAttr; }
+    segment_strategy::id_t segmentStrategyAttr() const { 
+      return _segmentStrategyAttr;
+    }
+    approx_strategy::id_t approxStrategyAttr() const {
+      return _approxStrategyAttr;
+    }
     virtual const source_location_t &loc() { return _loc_last; }
     const source_location_t &loc_cur() { return _loc; }
     virtual const char *ptr() { return _code; };

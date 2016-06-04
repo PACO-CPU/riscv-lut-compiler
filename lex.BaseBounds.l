@@ -23,41 +23,34 @@ float    -?[0-9]*[.][0-9]*([eE][+-]?[0-9]+)?
 any .
 
 %%
-
-
-
-{ws}      { _loc+=strlen(yytext); }
-{nl}      { _loc.newline(strlen(yytext)); }
-
-{integer} { 
-  _loc_last=_loc; 
-  _loc+=strlen(yytext); 
-  _numAttr=strtol(yytext,NULL,0); 
-  return (_kind=TOK_NUMBER); 
+{ws} { _loc+=strlen(yytext); }
+{nl} { _loc.newline(strlen(yytext)); }
+{integer} {
+  _loc_last=_loc;
+  _loc+=strlen(yytext);
+  _numAttr=strtol(yytext,NULL,0);
+  return (_kind=TOK_NUMBER);
 }
-{float}   { 
-  _loc_last=_loc; 
-  _loc+=strlen(yytext); 
-  _numAttr=strtod(yytext,NULL); 
-  return (_kind=TOK_NUMBER); 
+{float} {
+  _loc_last=_loc;
+  _loc+=strlen(yytext);
+  _numAttr=strtod(yytext,NULL);
+  return (_kind=TOK_NUMBER);
 }
-{ident}  {
-  _loc_last=_loc; 
-  _loc+=strlen(yytext); 
+{ident} {
+  _loc_last=_loc;
+  _loc+=strlen(yytext);
   _strAttr=yytext;
-  return (_kind=TOK_IDENT); 
+  return (_kind=TOK_IDENT);
 }
-
 "(" { EMIT_SYMBOL(TOK_LPAREN); }
 ")" { EMIT_SYMBOL(TOK_RPAREN); }
 "," { EMIT_SYMBOL(TOK_COMMA); }
-
-{any} { 
-  _loc_last=_loc; 
-  _loc+=strlen(yytext); 
-  return (_kind=TOK_INVALID); 
+{any} {
+  _loc_last=_loc;
+  _loc+=strlen(yytext);
+  return (_kind=TOK_INVALID);
 }
-
 %%
 
 

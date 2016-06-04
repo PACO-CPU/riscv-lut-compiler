@@ -9,6 +9,7 @@
 #include "dlib.h"
 #include "bounds.h"
 #include "arch-config.h"
+#include "strategy-def.h"
 
 #include <alpha/alpha.h>
 
@@ -46,10 +47,11 @@ class LookupTable {
     // keyvalues overridden by input files (architecture defaults)
     int _num_segments;
     int _num_primary_segments;
-    segment_strategy_t _strategy1;
-    segment_strategy_t _strategy2;
+    segment_strategy::id_t _strategy1;
+    segment_strategy::id_t _strategy2;
+    Bounds _explicit_segments;
+    approx_strategy::id_t _approximation_strategy;
     alp::string _fn_weights;
-    alp::string _approximation_strategy;
     Bounds      _bounds;
 
 
@@ -92,10 +94,11 @@ class LookupTable {
     
     int num_segments() const { return _num_segments; }
     int num_primary_segments() const { return _num_primary_segments; }
-    const segment_strategy_t &strategy1() const { return _strategy1; }
-    const segment_strategy_t &strategy2() const { return _strategy2; }
+    segment_strategy::id_t strategy1() const { return _strategy1; }
+    segment_strategy::id_t strategy2() const { return _strategy2; }
+    const Bounds &explicit_segments() const { return _explicit_segments; }
     const alp::string &fn_weights() const { return _fn_weights; }
-    const alp::string &approximation_strategy() const { 
+    approx_strategy::id_t approximation_strategy() const { 
       return _approximation_strategy; }
     const Bounds &bounds() { return _bounds; }
     /** Attempts to retrieve a named key-value.
@@ -110,6 +113,20 @@ class LookupTable {
       * \return Pointer to the keyvalue if it exists, NULL otherwise.
       */
     KeyValue *getKeyValue(const alp::string &key) const;
+    
+    
+    
+    /** Parses a string into an segmentation strategy.
+      *
+      * Basically just a lookup of strings
+      */
+    static segment_strategy::id_t ParseSegmentStrategy(const alp::string &s);
+
+    /** Parses a string into an segmentation strategy.
+      *
+      * Basically just a lookup of strings
+      */
+    static approx_strategy::id_t ParseApproxStrategy(const alp::string &s);
     
     /** Parses an input format buffer and integrates its content into this
       * instance.
@@ -182,6 +199,7 @@ class LookupTable {
       */
     void saveOutputFile(const char *fn);
     
+    const alp::array_t<segment_t> &segments() const { return _segments; }
     /** Adds a new segment into the LUT.
       *
       * \param seg Segment to insert.
@@ -192,9 +210,21 @@ class LookupTable {
       * and correctOverlap was set to false.
       */
     void addSegment(const segment_t &seg, bool correctOverlap);
+    void removeSegment(size_t index) {
+      _segments.remove(index);
+    }
+    void clearSegments() {
+      _segments.clear();
+    }
 
     void evaluate(const seg_data_t &arg, seg_data_t &res);
     seg_data_t evaluate(const seg_data_t &arg);
+
+
+    /** Translates our set of segments into an architecture-specific
+      * bitstream.
+      */
+    void translate();
 
 
 };

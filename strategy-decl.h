@@ -1,0 +1,23 @@
+
+#ifndef SEGMENT_STRATEGY
+#define SEGMENT_STRATEGY(id,name)
+#define _DEF_SEGMENT_STRATEGY
+#endif
+
+#ifndef APPROX_STRATEGY
+#define APPROX_STRATEGY(id,name)
+#define _DEF_APPROX_STRATEGY
+#endif
+
+SEGMENT_STRATEGY(UNIFORM,"uniform")
+
+APPROX_STRATEGY(INTERPOLATED,"interpolated")
+APPROX_STRATEGY(MIN_ERROR,"min-error")
+APPROX_STRATEGY(MIN_ERROR_WEIGHTED,"min-error-weighted")
+
+#ifdef _DEF_SEGMENT_STRATEGY
+#undef SEGMENT_STRATEGY
+#endif
+#ifdef _DEF_APPROX_STRATEGY
+#undef APPROX_STRATEGY
+#endif

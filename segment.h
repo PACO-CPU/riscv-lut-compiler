@@ -21,6 +21,13 @@ struct segment_t {
   seg_data_t y0;
   /** Value to attain at the upper bound */
   seg_data_t y1;
+
+  segment_t() { }
+  segment_t(const seg_data_t &x0, const seg_data_t &x1) : x0(x0), x1(x1) { }
+  segment_t(
+    const seg_data_t &x0, const seg_data_t &x1,
+    const seg_data_t &y0, const seg_data_t &y1
+    ) : x0(x0), x1(x1), y0(y0), y1(y1) { }
 };
 
 #endif

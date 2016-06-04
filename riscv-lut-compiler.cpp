@@ -4,6 +4,7 @@
 #include "error.h"
 #include "keyvalue.h"
 #include "options.h"
+#include "strategies.h"
 
 static int run_weights_test(options_t &options);
 int main(int argn, char **argv);
@@ -83,6 +84,7 @@ static int run_weights_test(options_t &options) {
 
 static int run_lut_compilation(options_t &options) {
   LookupTable *lut=new LookupTable(options.arch);
+  WeightsTable *weights=NULL;
   try {
     if (options.fInputIntermediate) {
       lut->parseIntermediateFile(options.fnInput.ptr);
@@ -106,16 +108,54 @@ static int run_lut_compilation(options_t &options) {
     return 1;
     
   }
-  
-  // todo: perform compilation
 
+  // todo: load weights if specified
+
+  if (!options.fInputIntermediate) {
+    try {
+      if (lut->strategy1()!=segment_strategy::INVALID) {
+        segment_strategy::get(lut->strategy1())->execute(lut,weights,options);
+      } else if (lut->explicit_segments().data().len>0) {
+        const alp::array_t<Bounds::interval_t> &intervals=
+          lut->explicit_segments().data();
+        for(size_t i=0;i<intervals.len;i++)
+          lut->addSegment(segment_t(intervals[i].start,intervals[i].end),true);
+        // fixme: think about whether specifying 'true' here makes sense.
+      } else {
+        throw RuntimeError(
+          "No segmentation method (strategy / explicit segments) specified");
+      }
+
+      if (lut->strategy2()!=segment_strategy::INVALID) {
+        segment_strategy::get(lut->strategy2())->execute(lut,weights,options);
+      }
+
+      if (lut->approximation_strategy()!=approx_strategy::INVALID) {
+        approx_strategy::get(lut->approximation_strategy())->execute(
+          lut,weights,options);
+      } else if (!options.fOutputIntermediate) {
+        throw RuntimeError(
+          "No approximation strategy specified and not outputting intermediate "
+          "representation");
+      }
+    } catch(RuntimeError &e) {
+      fprintf(
+        stderr,"\x1b[31;1mError compiling lut file %s: %s\x1b[30;0m\n",
+        options.fnInput.ptr,e.what());
+      return 1;
+    }
+  }
+  
   options.computeOutputName();
   if (options.fOutputIntermediate) {
     lut->saveIntermediateFile(options.outputName.ptr);
-  } else if (options.fOutputC) {
-    lut->saveOutputFile(options.outputName.ptr);
   } else {
-    // todo: output elf 
+    lut->translate();
+    if (options.fOutputC) {
+      lut->saveOutputFile(options.outputName.ptr);
+    } else {
+      // todo: output elf 
+    }
   }
   return 0;
 }

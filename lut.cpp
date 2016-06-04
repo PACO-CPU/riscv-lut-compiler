@@ -36,6 +36,9 @@ void LookupTable::segment_strategy_t::parse(const alp::string &str) {
 LookupTable::LookupTable() :
   _num_segments(arch_config_t::Default_numSegments),
   _num_primary_segments(arch_config_t::Default_numSegments),
+  _strategy1(segment_strategy::INVALID),
+  _strategy2(segment_strategy::INVALID),
+  _explicit_segments(false),
   _bounds(true),
   _target_lib(NULL),
   _target_func(NULL) {
@@ -44,6 +47,9 @@ LookupTable::LookupTable() :
 LookupTable::LookupTable(const arch_config_t &cfg) :
   _num_segments(cfg.numSegments),
   _num_primary_segments(cfg.numSegments),
+  _strategy1(segment_strategy::INVALID),
+  _strategy2(segment_strategy::INVALID),
+  _explicit_segments(false),
   _bounds(true), 
   _target_lib(NULL),
   _target_func(NULL) {
@@ -65,6 +71,36 @@ KeyValue *LookupTable::getKeyValue(const alp::string &key) const {
   for(size_t i=0;i<_keyvalues.len;i++) 
     if (_keyvalues[i]->name()==key) return _keyvalues[i];
   return NULL;
+}
+
+segment_strategy::id_t LookupTable::ParseSegmentStrategy(const alp::string &s) {
+  
+  #define SEGMENT_STRATEGY(id,name) \
+    } else if (s==name) { \
+      return segment_strategy::ID_##id; 
+
+  if (0) {
+  #include "strategy-decl.h"
+  } else {
+    throw SyntaxError("unknown segmentation strategy: "+s);
+  }
+
+  #undef SEGMENT_STRATEGY
+}
+
+approx_strategy::id_t LookupTable::ParseApproxStrategy(const alp::string &s) {
+  
+  #define APPROX_STRATEGY(id,name) \
+    } else if (s==name) { \
+      return approx_strategy::ID_##id;  
+
+  if (0) {
+  #include "strategy-decl.h"
+  } else {
+    throw SyntaxError("unknown segmentation strategy: "+s);
+  }
+
+  #undef APPROX_STRATEGY
 }
 
 void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
@@ -128,13 +164,15 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
         KVTEST("num-primary-segments",Integer)
           _num_primary_segments=kv->val_num();
         KVTEST("segments",String)
-          _strategy1.parse(kv->val_str());
+          _strategy1=ParseSegmentStrategy(kv->val_str());
         KVTEST("segments2",String)
-          _strategy2.parse(kv->val_str());
+          _strategy2=ParseSegmentStrategy(kv->val_str());
+        KVTEST("explicit-segments",String)
+          _explicit_segments.parse(kv->val_str().ptr,kv->val_str().len);
         KVTEST("weights",String)
           _fn_weights=kv->val_str();
         KVTEST("approximation",String)
-          _approximation_strategy=kv->val_str();
+          _approximation_strategy=ParseApproxStrategy(kv->val_str());
         KVTEST("bounds",String)
           _bounds.parse(kv->val_str().ptr,kv->val_str().len);
         }
@@ -489,7 +527,6 @@ void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
   _segments.insert(seg,idx);
 }
 
-
 void LookupTable::evaluate(const seg_data_t &arg, seg_data_t &res) {
   // if _target_func is NULL, the caller was not careful enough.
   assert( (_target_func!=NULL) && "Target function was not loaded" );
@@ -500,4 +537,8 @@ seg_data_t LookupTable::evaluate(const seg_data_t &arg) {
   seg_data_t res;
   evaluate(arg,res);
   return res;
+}
+
+void LookupTable::translate() {
+  // todo: implement 
 }

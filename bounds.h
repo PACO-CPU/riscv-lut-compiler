@@ -30,7 +30,7 @@ class Bounds {
     Bounds(bool autoMerge);
     /** Getter for the sorted list of disjoint intervals making up this
       * set of bounds. */
-    const alp::array_t<interval_t> &data() { return _data; }
+    const alp::array_t<interval_t> &data() const { return _data; }
 
     void addInterval(interval_t ival);
     void clear() { _data.clear(); }
