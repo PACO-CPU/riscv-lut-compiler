@@ -82,7 +82,7 @@ static int run_weights_test(options_t &options) {
 
 
 static int run_lut_compilation(options_t &options) {
-  LookupTable *lut=new LookupTable();
+  LookupTable *lut=new LookupTable(options.arch);
   try {
     if (options.fInputIntermediate) {
       lut->parseIntermediateFile(options.fnInput.ptr);

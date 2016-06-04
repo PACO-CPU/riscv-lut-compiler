@@ -1,5 +1,6 @@
 #ifndef RISCV_LUT_COMPILER_OPTIONS_H
 #define RISCV_LUT_COMPILER_OPTIONS_H
+#include "arch-config.h"
 #include <alpha/alpha.h>
 #include <stdio.h>
 struct options_t {
@@ -21,6 +22,8 @@ struct options_t {
   alp::string fnArch;
   alp::string lutName;
   alp::string outputName;
+
+  arch_config_t arch;
 
   options_t() : 
     fInputIntermediate(0),

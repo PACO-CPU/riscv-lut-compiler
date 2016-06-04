@@ -7,6 +7,8 @@
 #include "target-types.h"
 #include "util.h"
 #include "dlib.h"
+#include "bounds.h"
+#include "arch-config.h"
 
 #include <alpha/alpha.h>
 
@@ -21,12 +23,36 @@
 class LookupTable {
   public:
     typedef void (*target_func_t)(seg_data_t *res, const seg_data_t *arg0);
+    
+    struct segment_strategy_t {
+      Bounds bounds;
+      alp::string strategy;
+      segment_strategy_t() : bounds(false) {
+
+      }
+      void parse(const alp::string &str);
+      bool empty() { 
+        return (strategy.len<1) && (bounds.data().len<1);
+      }
+    };
+
   protected:
     
     /** Lookup table identifier generated *externally* and guaranteed to be 
       * unique among all Lookup tables used in a single program.
       */
     alp::string _ident;
+
+    // keyvalues overridden by input files (architecture defaults)
+    int _num_segments;
+    int _num_primary_segments;
+    segment_strategy_t _strategy1;
+    segment_strategy_t _strategy2;
+    alp::string _fn_weights;
+    alp::string _approximation_strategy;
+    Bounds      _bounds;
+
+
     
     // fields loaded/generated from input files only:
     alp::array_t<KeyValue*> _keyvalues;
@@ -53,12 +79,25 @@ class LookupTable {
       * Creates an emtpy Lookup table.
       */
     LookupTable();
+    /** Constructor.
+      *
+      * Uses architecture-specific initialization
+      */
+    LookupTable(const arch_config_t &cfg);
 
     ~LookupTable();
     
     /** Getter for this LUT's identifier */
-    const alp::string &ident() const { return _ident;}
+    const alp::string &ident() const { return _ident; }
     
+    int num_segments() const { return _num_segments; }
+    int num_primary_segments() const { return _num_primary_segments; }
+    const segment_strategy_t &strategy1() const { return _strategy1; }
+    const segment_strategy_t &strategy2() const { return _strategy2; }
+    const alp::string &fn_weights() const { return _fn_weights; }
+    const alp::string &approximation_strategy() const { 
+      return _approximation_strategy; }
+    const Bounds &bounds() { return _bounds; }
     /** Attempts to retrieve a named key-value.
       *
       * \param key Name of the keyvalue to retrieve.

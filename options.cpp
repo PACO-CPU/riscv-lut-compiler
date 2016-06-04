@@ -92,6 +92,7 @@ int options_t::parseCommandLine(int argn, const char **argv) {
     case Arch:
       state=Idle;
       fnArch=argv[i];
+      arch.parseFile(fnArch.ptr);
       break;
     case WeightSteps:
       state=Idle;

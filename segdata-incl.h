@@ -62,6 +62,13 @@ struct seg_data_t {
   bool operator<(const seg_data_t &v) const { return !(v<=*this); } 
   bool operator>(const seg_data_t &v) const { return !(*this<=v); } 
 
+  operator int() const {
+    switch(kind) {
+      default:
+      case Integer: return (int)(int64_t)data_f;
+      case Double:  return data_i;
+    }
+  }
   operator int64_t() const {
     switch(kind) {
       default:

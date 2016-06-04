@@ -10,7 +10,41 @@
 #include <FlexLexer.h>
 #include "intermediate-lexer.h"
 
+
+void LookupTable::segment_strategy_t::parse(const alp::string &str) {
+  bounds.clear();
+  strategy.clear();
+  
+  BoundsFlexLexer *lex=BoundsFlexLexer::New(str.ptr,str.len,"");
+  
+  switch(lex->yylex()) {
+    case BoundsFlexLexer::TOK_IDENT:
+      strategy=lex->strAttr();
+      if (lex->yylex()!=0) 
+        throw SyntaxError("end of string expected",lex);
+      break;
+    case BoundsFlexLexer::TOK_LPAREN:
+      bounds.parse(lex);
+      break;
+    default:
+      throw SyntaxError("'(' or strategy name expected",lex);
+  }
+  
+  delete lex;
+}
+
 LookupTable::LookupTable() :
+  _num_segments(arch_config_t::Default_numSegments),
+  _num_primary_segments(arch_config_t::Default_numSegments),
+  _bounds(true),
+  _target_lib(NULL),
+  _target_func(NULL) {
+
+}
+LookupTable::LookupTable(const arch_config_t &cfg) :
+  _num_segments(cfg.numSegments),
+  _num_primary_segments(cfg.numSegments),
+  _bounds(true), 
   _target_lib(NULL),
   _target_func(NULL) {
 
@@ -47,6 +81,8 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
   parse_state_t state=Keyvalues;
 
   source_location_t loc_target;
+  bool identDefined=false;
+
   
   // parse keyvalues
   while(state==Keyvalues) {
@@ -76,6 +112,32 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
           default:
             throw SyntaxError("string or number expected",lex);
         }
+        
+        // handle special (known) key-values.
+        #define KVTEST(id,type) \
+          } else if (kv->name()==id) { \
+              if (kv->kind()!=KeyValue::type) \
+                throw SyntaxError("'" id "' must be a " #type,lex);
+        
+        if (0) { 
+        KVTEST("name",String)
+          _ident=kv->val_str();
+          identDefined=true;
+        KVTEST("num-segments",Integer)
+          _num_segments=kv->val_num();
+        KVTEST("num-primary-segments",Integer)
+          _num_primary_segments=kv->val_num();
+        KVTEST("segments",String)
+          _strategy1.parse(kv->val_str());
+        KVTEST("segments2",String)
+          _strategy2.parse(kv->val_str());
+        KVTEST("weights",String)
+          _fn_weights=kv->val_str();
+        KVTEST("approximation",String)
+          _approximation_strategy=kv->val_str();
+        KVTEST("bounds",String)
+          _bounds.parse(kv->val_str().ptr,kv->val_str().len);
+        }
 
         if ((idx0=findKeyValue(name))>-1) {
           delete _keyvalues[idx0];
@@ -89,6 +151,10 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
         throw SyntaxError("key-value or separator expected",lex);
     }
   }
+  if (!identDefined) {
+    throw SyntaxError("no 'name' specified",lex);
+  }
+
   // parse target function
   while(state==TargetFunction) {
     switch(lex->yylex()) {
@@ -288,6 +354,8 @@ void LookupTable::parseIntermediate(
         throw SyntaxError("'name' or 'segment' expected",lex);
     }
   }
+
+  delete lex;
 
   if (!identDefined)
     throw SyntaxError("no name defined",lex);
