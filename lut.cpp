@@ -10,29 +10,6 @@
 #include <FlexLexer.h>
 #include "intermediate-lexer.h"
 
-
-void LookupTable::segment_strategy_t::parse(const alp::string &str) {
-  bounds.clear();
-  strategy.clear();
-  
-  BoundsFlexLexer *lex=BoundsFlexLexer::New(str.ptr,str.len,"");
-  
-  switch(lex->yylex()) {
-    case BoundsFlexLexer::TOK_IDENT:
-      strategy=lex->strAttr();
-      if (lex->yylex()!=0) 
-        throw SyntaxError("end of string expected",lex);
-      break;
-    case BoundsFlexLexer::TOK_LPAREN:
-      bounds.parse(lex);
-      break;
-    default:
-      throw SyntaxError("'(' or strategy name expected",lex);
-  }
-  
-  delete lex;
-}
-
 LookupTable::LookupTable() :
   _num_segments(arch_config_t::Default_numSegments),
   _num_primary_segments(arch_config_t::Default_numSegments),

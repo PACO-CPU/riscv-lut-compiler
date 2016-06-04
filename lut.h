@@ -24,19 +24,7 @@
 class LookupTable {
   public:
     typedef void (*target_func_t)(seg_data_t *res, const seg_data_t *arg0);
-    
-    struct segment_strategy_t {
-      Bounds bounds;
-      alp::string strategy;
-      segment_strategy_t() : bounds(false) {
-
-      }
-      void parse(const alp::string &str);
-      bool empty() { 
-        return (strategy.len<1) && (bounds.data().len<1);
-      }
-    };
-
+   
   protected:
     
     /** Lookup table identifier generated *externally* and guaranteed to be 
