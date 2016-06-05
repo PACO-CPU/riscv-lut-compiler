@@ -109,7 +109,31 @@ static int run_lut_compilation(options_t &options) {
     
   }
 
-  // todo: load weights if specified
+  if (lut->fn_weights().len>0) {
+    try {
+      alp::string fn=options.vfsWeights.locate(lut->fn_weights());
+      if (fn.len<1) {
+        throw RuntimeError("Unable to locate weights file");
+      }
+      weights=new WeightsTable();
+      weights->parseWeightsFile(fn.ptr);
+    } catch(FileIOException &e) {
+      fprintf(
+        stderr,"\x1b[31;1mError loading weights file: %s\x1b[30;0m\n",
+        e.what());
+      return 1;
+    } catch(SyntaxError &e) {
+      fprintf(
+        stderr,"\x1b[31;1mError parsing weights file %s: %s\x1b[30;0m\n",
+        options.fnInput.ptr,e.what());
+      return 1;
+    } catch(RuntimeError &e) {
+      fprintf(
+        stderr,"\x1b[31;1mError loading weights file %s: %s\x1b[30;0m\n",
+        options.fnInput.ptr,e.what());
+      return 1;
+    }
+  }
 
   if (!options.fInputIntermediate) {
     try {
@@ -145,17 +169,32 @@ static int run_lut_compilation(options_t &options) {
       return 1;
     }
   }
-  
-  options.computeOutputName();
-  if (options.fOutputIntermediate) {
-    lut->saveIntermediateFile(options.outputName.ptr);
-  } else {
-    lut->translate();
-    if (options.fOutputC) {
-      lut->saveOutputFile(options.outputName.ptr);
+  try {
+    options.computeOutputName();
+    if (options.fOutputIntermediate) {
+      lut->saveIntermediateFile(options.outputName.ptr);
     } else {
-      // todo: output elf 
+      lut->translate();
+      if (options.fOutputC) {
+        lut->saveOutputFile(options.outputName.ptr);
+      } else {
+        TempDir tmpdir;
+        alp::string fn_c=tmpdir.path()+"lut.c";
+        int code;
+        lut->saveOutputFile(fn_c.ptr);
+
+        if ((code=system(alp::string::Format(
+          "%s \"%s\" -o \"%s\"",
+          options.cmdCompileTargetO.ptr,
+          fn_c.ptr,options.outputName.ptr).ptr))!=0) 
+          throw RuntimeError("unable to compile LUT to ELF");
+      }
     }
+  } catch(RuntimeError &e) {
+    fprintf(
+      stderr,"\x1b[31;1mError outputting LUT %s: %s\x1b[30;0m\n",
+      options.fnInput.ptr,e.what());
+    return 1;
   }
   return 0;
 }

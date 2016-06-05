@@ -9,6 +9,7 @@
 #include "dlib.h"
 #include "bounds.h"
 #include "arch-config.h"
+#include "options.h"
 #include "strategy-def.h"
 
 #include <alpha/alpha.h>
@@ -26,6 +27,11 @@ class LookupTable {
     typedef void (*target_func_t)(seg_data_t *res, const seg_data_t *arg0);
    
   protected:
+  
+
+    // process-specific options
+    alp::string _cmdCompileSO;
+    
     
     /** Lookup table identifier generated *externally* and guaranteed to be 
       * unique among all Lookup tables used in a single program.
@@ -74,6 +80,11 @@ class LookupTable {
       * Uses architecture-specific initialization
       */
     LookupTable(const arch_config_t &cfg);
+    /** Constructor.
+      *
+      * Uses architecture-specific and program flow-specific initialization
+      */
+    LookupTable(const options_t &opts);
 
     ~LookupTable();
     

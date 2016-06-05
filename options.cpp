@@ -3,6 +3,33 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __linux
+#include <stdlib.h>
+#endif
+
+options_t::options_t() : 
+  fInputIntermediate(0),
+  fInputWeights(0),
+  fOutputIntermediate(0),
+  fOutputC(0),
+  maxWeightSteps(Default_maxWeightSteps),
+  cmdCompileSO(Default_cmdCompileSO()),
+  cmdCompileTargetO(Default_cmdCompileTargetO())
+  // strings initialize themselves to ""
+  {
+  
+  #ifdef __linux
+  char *env;
+  if ((env=getenv(ENV_CMD_SO)))
+    cmdCompileSO=env;
+  if ((env=getenv(ENV_CMD_TARGET_O)))
+    cmdCompileTargetO=env;
+  #else
+  #warn "environment variables not exploited on this OS"
+  #endif
+
+}
+
 void options_t::print(FILE *f) {
   fprintf(f,
     "riscv-lut-compiler [options] input-file\n"
@@ -10,6 +37,7 @@ void options_t::print(FILE *f) {
     "  table configuration.\n"
     "  This is outputted either as an intermediate format (that can be read\n"
     "  again) or a block of LUT configuration words as an assembly code file.\n"
+    "\n"
     "options:\n"
     "  -h|--help\n"
     "    Print this help text and exit normally.\n"
@@ -36,8 +64,25 @@ void options_t::print(FILE *f) {
     "    weight distributions.\n"
     "  --weight-steps <number>\n"
     "    set the maximum number of samples done when performing a \n"
-    "    weights test. default: %i\n",
-    Default_maxWeightSteps
+    "    weights test. default: %i\n"
+    "  -W <path>\n"
+    "    specify a path to look for weights files in.\n"
+    "  --cmd-compile-so <command>\n"
+    "    specify the command to use for building shared objects on this\n"
+    "    platform. default: `%s`\n"
+    "  --cmd-compile-target-o <command>\n"
+    "    specify the command to use for building object filess on the\n"
+    "    target platform. default: `%s`\n"
+    "\n"
+    "environment variables:\n"
+    "  " ENV_CMD_SO "\n"
+    "    set the default for --cmd-compile-so.\n"
+    "  " ENV_CMD_TARGET_O "\n"
+    "    set the default for --cmd-compile-target-o.\n"
+    ,
+    Default_maxWeightSteps,
+    Default_cmdCompileSO(),
+    Default_cmdCompileTargetO()
     );
 }
 
@@ -48,7 +93,10 @@ int options_t::parseCommandLine(int argn, const char **argv) {
     Name,
     Output,
     Arch,
-    WeightSteps
+    WeightSteps,
+    WeightsPath,
+    CmdCompileSO,
+    CmdCompileTargetO
   };
   state_t state=Idle;
 
@@ -68,6 +116,11 @@ int options_t::parseCommandLine(int argn, const char **argv) {
         else if (SWITCH("-o","--output")) state=Output;
         else if (LSWITCH("--arch")) state=Arch;
         else if (LSWITCH("--weight-steps")) state=WeightSteps;
+        else if (LSWITCH("-W")) state=WeightsPath;
+        // gcc-style weights path
+        else if (strncmp("-W",argv[i],2)==0) vfsWeights.addPath(argv[i]+2);
+        else if (LSWITCH("--cmd-compile-so")) state=CmdCompileSO;
+        else if (LSWITCH("--cmd-compile-target-o")) state=CmdCompileTargetO;
         else if (SWITCH("-h","--help")) {
           print(stdout);
           return 2;
@@ -102,6 +155,19 @@ int options_t::parseCommandLine(int argn, const char **argv) {
           CommandLineError::Semantics,
           "positive number expected for --weight-steps");
       break;
+    case WeightsPath:
+      state=Idle;
+      vfsWeights.addPath(argv[i]);
+      break;
+    case CmdCompileSO:
+      state=Idle;
+      cmdCompileSO=argv[i];
+      break;
+    case CmdCompileTargetO:
+      state=Idle;
+      cmdCompileTargetO=argv[i];
+      break;
+      
 
     #undef SWITCH
     #undef LSWITCH

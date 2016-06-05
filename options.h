@@ -2,11 +2,20 @@
 #define RISCV_LUT_COMPILER_OPTIONS_H
 #include "arch-config.h"
 #include <alpha/alpha.h>
+#include "vfs.h"
 #include <stdio.h>
+
+#define ENV_CMD_SO "RISCV_LUT_COMPILER_CMD_SO"
+#define ENV_CMD_TARGET_O "RISCV_LUT_COMPILER_CMD_TARGET_O"
+
 struct options_t {
   enum {
     Default_maxWeightSteps = 1000,
   };
+  static const char *Default_cmdCompileSO() { return "gcc -g -fPIC -shared"; }
+  static const char *Default_cmdCompileTargetO() { 
+    return "riscv64-unknown-elf-gcc -c"; 
+  }
   // options go here.
   
   
@@ -23,17 +32,14 @@ struct options_t {
   alp::string lutName;
   alp::string outputName;
 
+  alp::string cmdCompileSO;
+  alp::string cmdCompileTargetO;
+
   arch_config_t arch;
 
-  options_t() : 
-    fInputIntermediate(0),
-    fInputWeights(0),
-    fOutputIntermediate(0),
-    fOutputC(0),
-    maxWeightSteps(Default_maxWeightSteps)
-    // strings initialize themselves
-    {
-  }
+  VFS vfsWeights;
+
+  options_t(); 
 
   /** Prints an overview of available options on the file specified.
     *

@@ -11,6 +11,7 @@
 #include "intermediate-lexer.h"
 
 LookupTable::LookupTable() :
+  _cmdCompileSO(options_t::Default_cmdCompileSO()),
   _num_segments(arch_config_t::Default_numSegments),
   _num_primary_segments(arch_config_t::Default_numSegments),
   _strategy1(segment_strategy::INVALID),
@@ -22,8 +23,21 @@ LookupTable::LookupTable() :
 
 }
 LookupTable::LookupTable(const arch_config_t &cfg) :
+  _cmdCompileSO(options_t::Default_cmdCompileSO()),
   _num_segments(cfg.numSegments),
   _num_primary_segments(cfg.numSegments),
+  _strategy1(segment_strategy::INVALID),
+  _strategy2(segment_strategy::INVALID),
+  _explicit_segments(false),
+  _bounds(true), 
+  _target_lib(NULL),
+  _target_func(NULL) {
+
+}
+LookupTable::LookupTable(const options_t &opts) :
+  _cmdCompileSO(opts.cmdCompileSO),
+  _num_segments(opts.arch.numSegments),
+  _num_primary_segments(opts.arch.numSegments),
   _strategy1(segment_strategy::INVALID),
   _strategy2(segment_strategy::INVALID),
   _explicit_segments(false),
@@ -264,8 +278,8 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
   // output a DLL so other than the extension it *should* work fine
   r=system(
     alp::string::Format(
-      "gcc %starget.cpp -g -fPIC -shared -o%s",
-      workdir.ptr,libname.ptr).ptr);
+      "%s \"%starget.cpp\" -o \"%s\"",
+      _cmdCompileSO.ptr,workdir.ptr,libname.ptr).ptr);
 
   if (r!=0) 
     throw RuntimeError(
