@@ -2,8 +2,9 @@
 
 static void _execute(
   LookupTable *lut, WeightsTable *weights, options_t &options) {
-
-
+  
+  // todo: implement
+  
 }
 
 namespace approx_strategy {

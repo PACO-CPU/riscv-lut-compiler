@@ -215,6 +215,8 @@ class LookupTable {
     void clearSegments() {
       _segments.clear();
     }
+    void setSegmentValues(
+      size_t index, const seg_data_t &y0, const seg_data_t &y1);
 
     void evaluate(const seg_data_t &arg, seg_data_t &res);
     seg_data_t evaluate(const seg_data_t &arg);

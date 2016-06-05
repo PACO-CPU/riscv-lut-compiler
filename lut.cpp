@@ -518,6 +518,19 @@ void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
   _segments.insert(seg,idx);
 }
 
+void LookupTable::setSegmentValues(
+  size_t index, const seg_data_t &y0, const seg_data_t &y1) {
+  
+  if (index>=_segments.len)
+    throw RuntimeError(
+      alp::string::Format(
+        "Segment index %lu out of bounds [0,%lu)",index,_segments.len));
+
+  _segments[index].y0=y0;
+  _segments[index].y1=y1;
+
+}
+
 void LookupTable::evaluate(const seg_data_t &arg, seg_data_t &res) {
   // if _target_func is NULL, the caller was not careful enough.
   assert( (_target_func!=NULL) && "Target function was not loaded" );
