@@ -14,8 +14,16 @@
 WeightsTable::WeightsTable() :
   _isAllIntegers(true) {
   _l=luaL_newstate();
-  // todo: expose all math table contents as globals
-  luaL_openlibs(_l);
+  
+  // creates the math library as a new table (and leaves it on the stack)
+  luaL_requiref(_l,LUA_MATHLIBNAME,luaopen_math,1);
+
+  // iterate through all members..
+  lua_pushnil(_l);
+  while(lua_next(_l,-2)!=0) {
+    lua_setglobal(_l,lua_tostring(_l,-2)); // and make them global
+  }
+  lua_pop(_l,1);
 }
 
 WeightsTable::~WeightsTable() {
