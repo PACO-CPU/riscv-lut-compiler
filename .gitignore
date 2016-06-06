@@ -3,3 +3,5 @@
 /make.incl
 /*.cc
 /segdata.h
+/html
+/latex

@@ -14,6 +14,18 @@
 
 #include <alpha/alpha.h>
 
+/* 
+  todo: add lut hardware-specific:
+    - setting of the lut domain
+      - done in the first segmentation strategy
+      - an interval with a power of two size with an offset
+      - the offset is only used during compilation
+    - evaluation in lut domain
+      - address by segment selector (selectorBits wide) and offset into
+        the segment: use a floating-point value
+*/
+
+
 /** represents a single Lookup table.
   *
   * Contains all the information obtained from Input or intermediate files
@@ -133,17 +145,17 @@ class LookupTable {
       * Any additional information that was read from previous calls to
       * parseInput, parseIntermediate or was otherwise generated will be lost.
       *
-      * @param ptr Pointer into the beginning of the buffer to read from.
-      * @param cb Length of the buffer starting at ptr, in bytes.
-      * @param name Name used to identify the compilation unit in debug/error
+      * \param ptr Pointer into the beginning of the buffer to read from.
+      * \param cb Length of the buffer starting at ptr, in bytes.
+      * \param name Name used to identify the compilation unit in debug/error
       * output
       */
     void parseInput(const char *ptr, size_t cb, const char *name=NULL);
 
     /** Parses an input format file using parseInput.
       *
-      * @param fn File name of the file to be read
-      * @throw FileIOException The given file could not be read.
+      * \param fn File name of the file to be read
+      * \throw FileIOException The given file could not be read.
       */
     void parseInputFile(const char *fn);
     
@@ -153,16 +165,16 @@ class LookupTable {
       * Any additional information that was read from previous calls to
       * parseInput, parseIntermediate or was otherwise generated will be lost.
       *
-      * @param ptr Pointer into the beginning of the buffer to read from.
-      * @param cb Length of the buffer starting at ptr, in bytes.
+      * \param ptr Pointer into the beginning of the buffer to read from.
+      * \param cb Length of the buffer starting at ptr, in bytes.
       */
     void parseIntermediate(const char *ptr, size_t cb, const char *name=NULL);
 
     /** Parses an intermediate format file using parseIntermediate.
       *
-      * @param fn File name of the file to be read
-      * @throw FileIOException The given file could not be read.
-      * @param name Name used to identify the compilation unit in debug/error
+      * \param fn File name of the file to be read
+      * \throw FileIOException The given file could not be read.
+      * \param name Name used to identify the compilation unit in debug/error
       * output
       */
     void parseIntermediateFile(const char *fn);

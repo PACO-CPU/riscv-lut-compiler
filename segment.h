@@ -4,6 +4,9 @@
 #include "segdata.h"
 
 
+/**
+  todo: switch to LUT domain notation of boundaries. this affects x0 and x1.
+  */
 
 /** Structure representing a single LUT segment.
   *

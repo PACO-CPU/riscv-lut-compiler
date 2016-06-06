@@ -7,8 +7,8 @@ static void _execute(
   
 }
 
-namespace approx_strategy {
-  const record_t MIN_ERROR_WEIGHTED {
+namespace segment_strategy {
+  const record_t LOG_RIGHT {
     .execute=_execute
   };
 
