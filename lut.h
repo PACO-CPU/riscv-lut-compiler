@@ -33,6 +33,18 @@
   *
   * All keyvalues read from input files are stored but meaningful ones are
   * interpreted as well and stored in appropriate fields.
+  *
+  * During translation from input format to segments, a new input domain space
+  * is defined, the *segment space*. This is a power of two interval in which
+  * the target function is to be approximated. Inputs outside of this interval
+  * are considered don't cares, thus the approximation is extended periodically
+  * beyond the segment space boundaries.
+  * Segment space is further partitioned into a number of segments defined by
+  * the number of bits arch_config_t::selectorBits fed into the LUT's address
+  * translation PLA. The output of this PLA consists of 
+  * arch_config_t::segmentBits bits, which in turn limits the number of 
+  * segments to be used from this space.
+  *
   */
 class LookupTable {
   public:
@@ -49,6 +61,8 @@ class LookupTable {
       * unique among all Lookup tables used in a single program.
       */
     alp::string _ident;
+
+    arch_config_t _arch;
 
     // keyvalues overridden by input files (architecture defaults)
     int _num_segments;
@@ -75,6 +89,9 @@ class LookupTable {
     target_func_t _target_func;
     
     // segments (loaded from intermediate or generated from input)
+    seg_data_t _segment_space_offset;
+    int _segment_space_width;
+
     alp::array_t<segment_t> _segments;
     
     /** LUT configuration bitstream
@@ -210,6 +227,45 @@ class LookupTable {
       */
     void saveOutputFile(const char *fn);
     
+    
+    /** Computes the segment space of this LUT.
+      *
+      * The segment space is an interval of possible input values (the domain)
+      * which is addressable by LUT segments.
+      * This has always a power of two extent and dictates what bits of an
+      * input word are used in the LUT core's PLA component.
+      * After the segment space was computed its segments can be addressed
+      * via the segment space evaluation method specifying the segment's 
+      * identifying bits and an offset into this segment.
+      *
+      * Each segment in segment space is indexed by a number of bits defined
+      * in arch_config_t::selectorBits.
+      *
+      * \see evaluate
+      */
+    void computeSegmentSpace();
+    
+    /** Convertes a coordinate from segment space to input space.
+      *
+      * \param segment Index of the segment to address. See computeSegmentSpace
+      * for more information.
+      * \param offset Offset into the indexed segment. See computeSegmentSpace
+      * for more information.
+      * \param inp Result of the coordinate translation.
+      */
+    void segmentToInputSpace(
+      uint32_t segment, double offset, seg_data_t &inp);
+    /** Convertes a coordinate from segment space to input space.
+      *
+      * \param segment Index of the addressed segment. See computeSegmentSpace
+      * for more information.
+      * \param offset Offset into the indexed segment. See computeSegmentSpace
+      * for more information.
+      * \param inp Location to translate to segment space
+      */
+    void inputToSegmentSpace(
+      uint32_t &segment, double &offset, const seg_data_t &inp);
+    
     const alp::array_t<segment_t> &segments() const { return _segments; }
     /** Adds a new segment into the LUT.
       *
@@ -229,10 +285,21 @@ class LookupTable {
     }
     void setSegmentValues(
       size_t index, const seg_data_t &y0, const seg_data_t &y1);
-
+    
+    /** Computes the target function with a point in input space.
+      */
     void evaluate(const seg_data_t &arg, seg_data_t &res);
+    /** Computes the target function with at a point in input space
+      */
     seg_data_t evaluate(const seg_data_t &arg);
+    
+    /** Computes the target function at a point in segment space
+      */
+    void evaluate(uint32_t segment, double offset, seg_data_t &res);
 
+    /** Computes the target function at a point in segment space
+      */
+    seg_data_t evaluate(uint32_t segment, double offset);
 
     /** Translates our set of segments into an architecture-specific
       * bitstream.

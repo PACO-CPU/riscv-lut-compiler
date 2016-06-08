@@ -19,11 +19,13 @@ LookupTable::LookupTable() :
   _explicit_segments(false),
   _bounds(true),
   _target_lib(NULL),
-  _target_func(NULL) {
+  _target_func(NULL),
+  _segment_space_width(-1) {
 
 }
 LookupTable::LookupTable(const arch_config_t &cfg) :
   _cmdCompileSO(options_t::Default_cmdCompileSO()),
+  _arch(cfg),
   _num_segments(cfg.numSegments),
   _num_primary_segments(cfg.numSegments),
   _strategy1(segment_strategy::INVALID),
@@ -31,11 +33,13 @@ LookupTable::LookupTable(const arch_config_t &cfg) :
   _explicit_segments(false),
   _bounds(true), 
   _target_lib(NULL),
-  _target_func(NULL) {
+  _target_func(NULL),
+  _segment_space_width(-1) {
 
 }
 LookupTable::LookupTable(const options_t &opts) :
   _cmdCompileSO(opts.cmdCompileSO),
+  _arch(opts.arch),
   _num_segments(opts.arch.numSegments),
   _num_primary_segments(opts.arch.numSegments),
   _strategy1(segment_strategy::INVALID),
@@ -43,7 +47,8 @@ LookupTable::LookupTable(const options_t &opts) :
   _explicit_segments(false),
   _bounds(true), 
   _target_lib(NULL),
-  _target_func(NULL) {
+  _target_func(NULL),
+  _segment_space_width(-1) {
 
 }
 
@@ -182,6 +187,9 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
   }
   if (!identDefined) {
     throw SyntaxError("no 'name' specified",lex);
+  }
+  if (_bounds.empty()) {
+    throw SyntaxError("no 'bounds' specified",lex);
   }
 
   // parse target function
@@ -488,6 +496,67 @@ void LookupTable::saveOutputFile(const char *fn) {
   fclose(f);
 }
 
+void LookupTable::computeSegmentSpace() {
+  assert(!_bounds.empty() && "Segment space computed without bounds");
+  seg_data_t first=_bounds.first(), last=_bounds.last();
+  uint64_t width;
+
+  if ((first.kind==seg_data_t::Double)||(last.kind==seg_data_t::Double)) {
+    assert(0 && "floating-point input domains not supported");
+  }
+
+  width=(uint64_t)last.data_i-(uint64_t)first.data_i+1;
+
+  if (width>(0x80000000uL<<32)) {
+    throw RuntimeError("input domain too large: can not exceed 2^63 values");
+  }
+
+  for(
+    _segment_space_width=0;
+    (1uL<<_segment_space_width)<width;
+    _segment_space_width++);
+  _segment_space_offset=first;
+
+}
+
+
+void LookupTable::segmentToInputSpace(
+  uint32_t segment, double offset, seg_data_t &inp) {
+  
+  // todo: test this
+
+  uint64_t segment_offset = 
+    // offset of the segment start from the beginning of the segment space
+    (((uint64_t)segment&((1uL<<_arch.selectorBits)-1)) 
+    << (_segment_space_width-_arch.selectorBits)) +
+
+    // offset into the segment
+    (uint64_t)((1uL<<(_segment_space_width-_arch.selectorBits))*offset);
+
+  // todo: add support for floating-point offsets or emit an error/warning
+  inp=(int64_t)segment_offset+_segment_space_offset.data_i;
+
+}
+void LookupTable::inputToSegmentSpace(
+  uint32_t &segment, double &offset, const seg_data_t &inp) {
+  
+  // todo: test this
+
+  uint64_t segment_offset=
+    (
+      (uint64_t)(inp.data_i-_segment_space_offset.data_i)
+      &((1uL<<_segment_space_width)-1));
+
+  segment=segment_offset>>(_segment_space_width-_arch.selectorBits);
+  
+  segment_offset&=(1uL<<(_segment_space_width-_arch.selectorBits))-1;
+
+  offset=
+    (double)segment_offset/
+    (double)(1uL<<(_segment_space_width-_arch.selectorBits));
+
+}
+
 void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
   size_t idx;
   for (idx=0;idx<_segments.len;idx++) {
@@ -542,6 +611,20 @@ seg_data_t LookupTable::evaluate(const seg_data_t &arg) {
   evaluate(arg,res);
   return res;
 }
+
+void LookupTable::evaluate(uint32_t segment, double offset, seg_data_t &res) {
+  seg_data_t arg;
+  segmentToInputSpace(segment,offset,arg);
+  evaluate(arg,res);
+}
+
+seg_data_t LookupTable::evaluate(uint32_t segment, double offset) {
+  seg_data_t arg,res;
+  segmentToInputSpace(segment,offset,arg);
+  evaluate(arg,res);
+  return res;
+}
+
 
 void LookupTable::translate() {
   // todo: implement 

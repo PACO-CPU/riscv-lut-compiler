@@ -34,7 +34,23 @@ class Bounds {
 
     void addInterval(interval_t ival);
     void clear() { _data.clear(); }
+
+    /** Returns true iff this bounds objects contains no points.
+      *
+      * That is, it has no intervals or all of them are empty.
+      */
+    bool empty();
     
+    /** Returns the lower bound of the first interval */
+    seg_data_t first() const {
+      if (_data.len<1) return (int64_t)0;
+      return _data[0].start;
+    }
+    /** Returns the upper bound of the last interval */
+    seg_data_t last() const {
+      if (_data.len<1) return (int64_t)0;
+      return _data[_data.len-1].end;
+    }
     /** Parses a string expected to be of format:
       *        ( '(' number ',' number ')' ) *
       */

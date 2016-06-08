@@ -33,6 +33,11 @@ void Bounds::addInterval(interval_t ival) {
   _data.insert(ival,i);
 }
 
+bool Bounds::empty() {
+  for(size_t i=0;i<_data.len;i++)
+    if (_data[i].end>=_data[i].start) return false;
+  return true;
+}
 
 void Bounds::parse(const char *ptr, size_t cb) {
   _data.clear();
