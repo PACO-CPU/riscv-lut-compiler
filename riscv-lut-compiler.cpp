@@ -5,6 +5,7 @@
 #include "keyvalue.h"
 #include "options.h"
 #include "strategies.h"
+#include <alpha/alpha.h>
 
 static int run_weights_test(options_t &options);
 int main(int argn, char **argv);

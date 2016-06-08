@@ -17,19 +17,11 @@
   along with this code.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _ALPHA_H
-#define _ALPHA_H
+#ifndef _ALPHA_CONFIG_H
+#define _ALPHA_CONFIG_H
 
-#include "config.h"
-
-#include "types/base.h"
-#include "types/string.h"
-#include "types/array.h"
-
-#include "unittest.h"
-#include "utf.h"
-#include "logging.h"
-
-//*/
+#ifndef ALPHA_DEBUG
+#define ALPHA_DEBUG 0
+#endif
 
 #endif
