@@ -125,10 +125,17 @@ class LookupTable {
     segment_strategy::id_t strategy1() const { return _strategy1; }
     segment_strategy::id_t strategy2() const { return _strategy2; }
     const Bounds &explicit_segments() const { return _explicit_segments; }
-    const alp::string &fn_weights() const { return _fn_weights; }
     approx_strategy::id_t approximation_strategy() const { 
-      return _approximation_strategy; }
+      return _approximation_strategy; 
+    }
+    const alp::string &fn_weights() const { return _fn_weights; }
     const Bounds &bounds() { return _bounds; }
+
+    const seg_data_t &segment_space_offset() const { 
+      return _segment_space_offset; 
+    }
+    int segment_space_width() const { return _segment_space_width; }
+
     /** Attempts to retrieve a named key-value.
       *
       * \param key Name of the keyvalue to retrieve.

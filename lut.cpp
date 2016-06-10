@@ -93,7 +93,7 @@ approx_strategy::id_t LookupTable::ParseApproxStrategy(const alp::string &s) {
   if (0) {
   #include "strategy-decl.h"
   } else {
-    throw SyntaxError("unknown segmentation strategy: "+s);
+    throw SyntaxError("unknown approximation strategy: "+s);
   }
 
   #undef APPROX_STRATEGY
@@ -522,8 +522,6 @@ void LookupTable::computeSegmentSpace() {
 
 void LookupTable::segmentToInputSpace(
   uint32_t segment, double offset, seg_data_t &inp) {
-  
-  // todo: test this
 
   uint64_t segment_offset = 
     // offset of the segment start from the beginning of the segment space
@@ -540,8 +538,6 @@ void LookupTable::segmentToInputSpace(
 void LookupTable::inputToSegmentSpace(
   uint32_t &segment, double &offset, const seg_data_t &inp) {
   
-  // todo: test this
-
   uint64_t segment_offset=
     (
       (uint64_t)(inp.data_i-_segment_space_offset.data_i)
@@ -556,6 +552,86 @@ void LookupTable::inputToSegmentSpace(
     (double)(1uL<<(_segment_space_width-_arch.selectorBits));
 
 }
+
+#define TEST_BOUNDS(bounds,offset,width,code) { \
+ \
+  LookupTable lut(opts); \
+   \
+  const char *input= \
+    "name=\"test\" bounds=\"" bounds "\" " \
+    "segments=\"uniform\" approximation=\"linear\" " \
+    "\n%%\n" \
+    "target int->int\n" \
+    "\n%%\n" \
+    "int target(int a) { return a; }\n" \
+    ; \
+  lut.parseInput(input,strlen(input),"test lut"); \
+  lut.computeSegmentSpace(); \
+  Assertf( \
+    lut.segment_space_offset()==seg_data_t(offset),\
+    "Erroneous segment space offset: %lli, expected %li\n", \
+    (int64_t)lut.segment_space_offset(),offset); \
+  Assertf( \
+    lut.segment_space_width()==width,\
+    "Erroneous segment space width: %i, expected %i\n", \
+    lut.segment_space_width(),width); \
+  code \
+}
+#define TEST_TRANSL_S2I(segment,offset,pos) { \
+  seg_data_t inp; \
+  lut.segmentToInputSpace(segment,offset,inp); \
+  Assertf( \
+    inp==seg_data_t(pos), \
+    "Erroneous translation segment space -> input space: (%u,%f) -> %i, " \
+    "expected: %li\n", \
+    segment,offset, (int)(int64_t)inp, pos); \
+}
+#define TEST_TRANSL_I2S(pos,segment,offset) { \
+  seg_data_t inp(pos); \
+  uint32_t _segment; \
+  double _offset; \
+  lut.inputToSegmentSpace(_segment,_offset,inp); \
+  Assertf( \
+    (_segment==segment)&&(_offset==offset), \
+    "Erroneous translation input -> segment space: %li -> (%u,%f), "\
+    "expected: (%u,%f)\n", \
+    pos,_segment,_offset, segment,offset); \
+}
+
+unittest( 
+  /* 
+    testing:
+      LookupTable::computeSegmentSpace
+      LookupTable::segmentToInputSpace
+      LookupTable::inputToSegmentSpace
+  */
+
+  options_t opts;
+  opts.arch.segmentBits=3;
+  opts.arch.selectorBits=4;
+  
+  TEST_BOUNDS( "(1,2)", 1, 1, )
+  TEST_BOUNDS( "(13,17)", 13, 3, )
+  TEST_BOUNDS( "(127,140) (180,255)", 127, 8, ) 
+  TEST_BOUNDS( "(-9,-4) (2,8)", -9, 5, )
+  TEST_BOUNDS( "(-17,-4) ", -17, 4, )
+
+  TEST_BOUNDS( "(4,259) ", 4, 8,
+    TEST_TRANSL_S2I( 0x0, 0., 4 )
+    TEST_TRANSL_S2I( 0x1, 0., 20 )
+    TEST_TRANSL_S2I( 0xf, 0., 244 )
+    TEST_TRANSL_S2I( 0xf, 0.5, 252 )
+
+    TEST_TRANSL_I2S( 4,   0x0, 0. )
+    TEST_TRANSL_I2S( 260, 0x0, 0. )
+    TEST_TRANSL_I2S( 300, 0x2, 0.5 )
+
+  )
+)
+#undef TEST_BOUNDS
+#undef TEST_TRANSL_S2I
+#undef TEST_TRANSL_I2S
+
 
 void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
   size_t idx;

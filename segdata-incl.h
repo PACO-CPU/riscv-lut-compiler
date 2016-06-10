@@ -18,6 +18,8 @@ struct seg_data_t {
 
   seg_data_t(double v) : kind(Double), data_f(v) {
   }
+  seg_data_t(int v) : kind(Integer), data_i(v) {
+  }
   seg_data_t(int64_t v) : kind(Integer), data_i(v) {
   }
 
@@ -27,6 +29,11 @@ struct seg_data_t {
     return v;
   }
 
+  int64_t operator=(int v) {
+    kind=Integer;
+    data_i=(v);
+    return v;
+  }
   int64_t operator=(int64_t v) {
     kind=Integer;
     data_i=(v);
@@ -41,7 +48,21 @@ struct seg_data_t {
     }
     return v;
   }
-
+  bool operator==(const seg_data_t &v) const {
+    switch(kind) {
+      case Integer:
+        switch(v.kind) {
+          case Integer: return data_i==v.data_i;
+          case Double: return data_i==v.data_f;
+        }
+      case Double:
+        switch(v.kind) {
+          case Integer: return data_f==v.data_i;
+          case Double: return data_f==v.data_f;
+        }
+    }
+    assert(0 && "Missing case in seg_data_t operator<=");
+  }
   bool operator<=(const seg_data_t &v) const {
     switch(kind) {
       case Integer:
