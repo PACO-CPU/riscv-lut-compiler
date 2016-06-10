@@ -44,8 +44,6 @@ void Bounds::parse(const char *ptr, size_t cb) {
    
   BoundsFlexLexer *lex=BoundsFlexLexer::New(ptr,cb,"");
   
-  segment_t newSegment;
-
   lex->yylex();
   parse(lex);
 

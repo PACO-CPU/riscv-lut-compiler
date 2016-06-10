@@ -260,8 +260,7 @@ class LookupTable {
       * for more information.
       * \param inp Result of the coordinate translation.
       */
-    void segmentToInputSpace(
-      uint32_t segment, double offset, seg_data_t &inp);
+    void segmentToInputSpace(const seg_loc_t &seg, seg_data_t &inp);
     /** Convertes a coordinate from segment space to input space.
       *
       * \param segment Index of the addressed segment. See computeSegmentSpace
@@ -270,8 +269,7 @@ class LookupTable {
       * for more information.
       * \param inp Location to translate to segment space
       */
-    void inputToSegmentSpace(
-      uint32_t &segment, double &offset, const seg_data_t &inp);
+    void inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp);
     
     const alp::array_t<segment_t> &segments() const { return _segments; }
     /** Adds a new segment into the LUT.
@@ -283,7 +281,25 @@ class LookupTable {
       * \throw RuntimeError The given segment overlaps with another segment
       * and correctOverlap was set to false.
       */
-    void addSegment(const segment_t &seg, bool correctOverlap);
+    void addSegment(const segment_t &seg, bool correctOverlap);    
+    
+    /** Adds a new segment into the LUT.
+      *
+      * Translates the input arguments into segment space and adds a new
+      * constant 0 segment with those boundaries.
+      * \see addSegment for further information.
+      *
+      * \param x0 Lower boundary of the segment in input space.
+      * \param x1 Upper boundary of the segment in input space.
+      * \param correctOverlap Set to true to adjust other segments to
+      * keep the set of segments disjoint. Otherwise it is expected not to
+      * overlap with any other segment.
+      * \throw RuntimeError The given segment overlaps with another segment
+      * and correctOverlap was set to false.
+      */
+    void addSegment(
+      const seg_data_t &x0, const seg_data_t &x1, bool correctOverlap);
+
     void removeSegment(size_t index) {
       _segments.remove(index);
     }
@@ -302,11 +318,11 @@ class LookupTable {
     
     /** Computes the target function at a point in segment space
       */
-    void evaluate(uint32_t segment, double offset, seg_data_t &res);
+    void evaluate(const seg_loc_t &arg, seg_data_t &res);
 
     /** Computes the target function at a point in segment space
       */
-    seg_data_t evaluate(uint32_t segment, double offset);
+    seg_data_t evaluate(const seg_loc_t &arg);
 
     /** Translates our set of segments into an architecture-specific
       * bitstream.

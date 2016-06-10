@@ -367,16 +367,23 @@ void LookupTable::parseIntermediate(
         break;
 
       case IntermediateFlexLexer::TOK_KWSEGMENT:
+        #define ARGUI(id) \
+          if (lex->yylex()!=IntermediateFlexLexer::TOK_NUMBER) \
+            throw SyntaxError("number expected",lex); \
+          if (lex->numAttr().kind!=seg_data_t::Integer) \
+            throw SyntaxError("integer expected",lex); \
+          newSegment.id=(uint32_t)lex->numAttr().data_i;
         #define ARG(id) \
           if (lex->yylex()!=IntermediateFlexLexer::TOK_NUMBER) \
             throw SyntaxError("number expected",lex); \
           newSegment.id=lex->numAttr();
 
-        ARG(x0)
-        ARG(x1)
+        ARGUI(x0)
+        ARGUI(x1)
         ARG(y0)
         ARG(y1)
 
+        #undef ARGUI
         #undef ARG
 
         addSegment(newSegment,false);
@@ -442,8 +449,7 @@ void LookupTable::generateIntermediateFormat(alp::string &res) {
           res+=alp::string::Format(" %lf",v.data_f); \
           break; \
       }
-    addnum(_segments[i].x0);
-    addnum(_segments[i].x1);
+    res+=alp::string::Format(" %lu %lu",_segments[i].x0,_segments[i].x1);
     addnum(_segments[i].y0);
     addnum(_segments[i].y1);
     res+="\n";
@@ -520,34 +526,32 @@ void LookupTable::computeSegmentSpace() {
 }
 
 
-void LookupTable::segmentToInputSpace(
-  uint32_t segment, double offset, seg_data_t &inp) {
+void LookupTable::segmentToInputSpace(const seg_loc_t &seg, seg_data_t &inp) {
 
   uint64_t segment_offset = 
     // offset of the segment start from the beginning of the segment space
-    (((uint64_t)segment&((1uL<<_arch.selectorBits)-1)) 
+    (((uint64_t)seg.segment&((1uL<<_arch.selectorBits)-1)) 
     << (_segment_space_width-_arch.selectorBits)) +
 
     // offset into the segment
-    (uint64_t)((1uL<<(_segment_space_width-_arch.selectorBits))*offset);
+    (uint64_t)((1uL<<(_segment_space_width-_arch.selectorBits))*seg.offset);
 
   // todo: add support for floating-point offsets or emit an error/warning
   inp=(int64_t)segment_offset+_segment_space_offset.data_i;
 
 }
-void LookupTable::inputToSegmentSpace(
-  uint32_t &segment, double &offset, const seg_data_t &inp) {
+void LookupTable::inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp) {
   
   uint64_t segment_offset=
     (
       (uint64_t)(inp.data_i-_segment_space_offset.data_i)
       &((1uL<<_segment_space_width)-1));
 
-  segment=segment_offset>>(_segment_space_width-_arch.selectorBits);
+  seg.segment=segment_offset>>(_segment_space_width-_arch.selectorBits);
   
   segment_offset&=(1uL<<(_segment_space_width-_arch.selectorBits))-1;
 
-  offset=
+  seg.offset=
     (double)segment_offset/
     (double)(1uL<<(_segment_space_width-_arch.selectorBits));
 
@@ -579,23 +583,23 @@ void LookupTable::inputToSegmentSpace(
 }
 #define TEST_TRANSL_S2I(segment,offset,pos) { \
   seg_data_t inp; \
-  lut.segmentToInputSpace(segment,offset,inp); \
+  seg_loc_t seg(segment,offset); \
+  lut.segmentToInputSpace(seg,inp); \
   Assertf( \
     inp==seg_data_t(pos), \
     "Erroneous translation segment space -> input space: (%u,%f) -> %i, " \
     "expected: %li\n", \
     segment,offset, (int)(int64_t)inp, pos); \
 }
-#define TEST_TRANSL_I2S(pos,segment,offset) { \
+#define TEST_TRANSL_I2S(pos,_segment,_offset) { \
   seg_data_t inp(pos); \
-  uint32_t _segment; \
-  double _offset; \
-  lut.inputToSegmentSpace(_segment,_offset,inp); \
+  seg_loc_t seg; \
+  lut.inputToSegmentSpace(seg,inp); \
   Assertf( \
-    (_segment==segment)&&(_offset==offset), \
+    (seg.segment==_segment)&&(seg.offset==_offset), \
     "Erroneous translation input -> segment space: %li -> (%u,%f), "\
     "expected: (%u,%f)\n", \
-    pos,_segment,_offset, segment,offset); \
+    pos,seg.segment,seg.offset, _segment,_offset); \
 }
 
 unittest( 
@@ -642,8 +646,8 @@ void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
     if (!correctOverlap)
       throw RuntimeError(
         alp::string::Format(
-          "the new segment (%g:%g) overlaps with another one",
-          (double)seg.x0,(double)seg.x1));
+          "the new segment (%u:%u) overlaps with another one",
+          seg.x0,seg.x1));
     
     if (_segments[idx].x0<seg.x1) {
       // we supersede the ending -> crop the other one
@@ -661,6 +665,20 @@ void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
     }
   }
   _segments.insert(seg,idx);
+}
+
+void LookupTable::addSegment(
+  const seg_data_t &x0, const seg_data_t &x1, bool correctOverlap) {
+  
+  segment_t seg;
+  seg_loc_t loc;
+  
+  inputToSegmentSpace(loc,x0); seg.x0=loc.segment;
+  inputToSegmentSpace(loc,x1); seg.x1=loc.segment;
+
+  addSegment(seg,correctOverlap);
+
+
 }
 
 void LookupTable::setSegmentValues(
@@ -688,16 +706,16 @@ seg_data_t LookupTable::evaluate(const seg_data_t &arg) {
   return res;
 }
 
-void LookupTable::evaluate(uint32_t segment, double offset, seg_data_t &res) {
-  seg_data_t arg;
-  segmentToInputSpace(segment,offset,arg);
-  evaluate(arg,res);
+void LookupTable::evaluate(const seg_loc_t &arg, seg_data_t &res) {
+  seg_data_t arg_i;
+  segmentToInputSpace(arg,arg_i);
+  evaluate(arg_i,res);
 }
 
-seg_data_t LookupTable::evaluate(uint32_t segment, double offset) {
-  seg_data_t arg,res;
-  segmentToInputSpace(segment,offset,arg);
-  evaluate(arg,res);
+seg_data_t LookupTable::evaluate(const seg_loc_t &arg) {
+  seg_data_t arg_i,res;
+  segmentToInputSpace(arg,arg_i);
+  evaluate(arg_i,res);
   return res;
 }
 

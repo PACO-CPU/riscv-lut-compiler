@@ -144,7 +144,7 @@ static int run_lut_compilation(options_t &options) {
         const alp::array_t<Bounds::interval_t> &intervals=
           lut->explicit_segments().data();
         for(size_t i=0;i<intervals.len;i++)
-          lut->addSegment(segment_t(intervals[i].start,intervals[i].end),true);
+          lut->addSegment(intervals[i].start,intervals[i].end,true);
         // fixme: think about whether specifying 'true' here makes sense.
       } else {
         throw RuntimeError(
