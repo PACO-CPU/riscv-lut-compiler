@@ -17,6 +17,7 @@ class IntermediateFlexLexer :
       TOK_KWNAME,
       TOK_NEWLINE,
       TOK_KWSEGMENT,
+      TOK_KWDOMAIN,
       TOK_NUMBER,
       TOK_STRING,
     };

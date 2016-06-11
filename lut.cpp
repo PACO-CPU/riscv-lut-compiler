@@ -347,55 +347,72 @@ void LookupTable::parseIntermediate(
   IntermediateFlexLexer *lex=IntermediateFlexLexer::New(ptr,cb,name);
   
   bool identDefined=false;
+  bool domainDefined=false;
   segment_t newSegment;
 
   while(lex->yylex()!=0) {
     switch(lex->kind()) {
+      #define ARGUI ({\
+        if (lex->yylex()!=IntermediateFlexLexer::TOK_NUMBER) \
+          throw SyntaxError("number expected",lex); \
+        if (lex->numAttr().kind!=seg_data_t::Integer) \
+          throw SyntaxError("integer expected",lex); \
+        (uint32_t)lex->numAttr().data_i; \
+        })
+      #define ARG ({ \
+        if (lex->yylex()!=IntermediateFlexLexer::TOK_NUMBER) \
+          throw SyntaxError("number expected",lex); \
+        lex->numAttr(); \
+        })
+      #define NEWLINE { \
+        if (lex->yylex()!=IntermediateFlexLexer::TOK_NEWLINE) \
+          throw SyntaxError("newline expected",lex); \
+        }
+        
       case IntermediateFlexLexer::TOK_KWNAME:
-        if (identDefined)
-          throw SyntaxError("name redefined",lex);
+        if (identDefined) 
+          SyntaxWarning("name redefined",lex);
         
         if (lex->yylex()!=IntermediateFlexLexer::TOK_STRING)
           throw SyntaxError("name expected",lex);
 
         _ident=lex->strAttr();
-
-        if (lex->yylex()!=IntermediateFlexLexer::TOK_NEWLINE)
-          throw SyntaxError("newline expected",lex);
         
         identDefined=true;
+
+        NEWLINE
         break;
 
       case IntermediateFlexLexer::TOK_KWSEGMENT:
-        #define ARGUI(id) \
-          if (lex->yylex()!=IntermediateFlexLexer::TOK_NUMBER) \
-            throw SyntaxError("number expected",lex); \
-          if (lex->numAttr().kind!=seg_data_t::Integer) \
-            throw SyntaxError("integer expected",lex); \
-          newSegment.id=(uint32_t)lex->numAttr().data_i;
-        #define ARG(id) \
-          if (lex->yylex()!=IntermediateFlexLexer::TOK_NUMBER) \
-            throw SyntaxError("number expected",lex); \
-          newSegment.id=lex->numAttr();
+        if (domainDefined) 
+          SyntaxWarning("domain redefined",lex);
 
-        ARGUI(x0)
-        ARGUI(x1)
-        ARG(y0)
-        ARG(y1)
+        newSegment.x0=ARGUI;
+        newSegment.x1=ARGUI;
+        newSegment.y0=ARG;
+        newSegment.y1=ARG;
 
-        #undef ARGUI
-        #undef ARG
 
         addSegment(newSegment,false);
 
-        if (lex->yylex()!=IntermediateFlexLexer::TOK_NEWLINE)
-          throw SyntaxError("newline expected",lex);
-        
+        NEWLINE 
         break;
+      case IntermediateFlexLexer::TOK_KWDOMAIN:
+        _segment_space_width=ARGUI;
+        _segment_space_offset=ARG;
+        
+        domainDefined=true;
+
+        NEWLINE
+        break;
+
       case IntermediateFlexLexer::TOK_NEWLINE:
         break;
       default:
         throw SyntaxError("'name' or 'segment' expected",lex);
+      #undef ARGUI
+      #undef ARG
+      #undef NEWLINE
     }
   }
 
@@ -403,6 +420,8 @@ void LookupTable::parseIntermediate(
 
   if (!identDefined)
     throw SyntaxError("no name defined",lex);
+  if (!domainDefined)
+    throw SyntaxError("no domain defined",lex);
   
 }
 void LookupTable::parseIntermediateFile(const char *fn) {
@@ -436,25 +455,29 @@ void LookupTable::parseIntermediateFile(const char *fn) {
   free((void*)buf);
 }
 void LookupTable::generateIntermediateFormat(alp::string &res) {
+  #define addnum(v) \
+    switch(v.kind) { \
+      case seg_data_t::Integer: \
+        res+=alp::string::Format(" %lli",v.data_i); \
+        break; \
+      case seg_data_t::Double: \
+        res+=alp::string::Format(" %lf",v.data_f); \
+        break; \
+    }
   res.clear();
   res+=alp::string::Format("name \"%s\"\n",_ident.ptr);
+  res+=alp::string::Format("domain %u ",_segment_space_width);
+  addnum(_segment_space_offset);
+  res+="\n";
   for(size_t i=0;i<_segments.len;i++) {
     res+="segment";
-    #define addnum(v) \
-      switch(v.kind) { \
-        case seg_data_t::Integer: \
-          res+=alp::string::Format(" %lli",v.data_i); \
-          break; \
-        case seg_data_t::Double: \
-          res+=alp::string::Format(" %lf",v.data_f); \
-          break; \
-      }
     res+=alp::string::Format(" %lu %lu",_segments[i].x0,_segments[i].x1);
     addnum(_segments[i].y0);
     addnum(_segments[i].y1);
     res+="\n";
 
   }
+  #undef addnum
 }
 
 void LookupTable::saveIntermediateFile(const char *fn) {

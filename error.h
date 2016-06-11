@@ -32,11 +32,14 @@ class FileIOException : public std::exception {
 class SyntaxError : public std::exception {
   protected:
     alp::string _msg;
-    void _common_ctor(
-      const alp::string &desc, 
-      SourceLocationLexer *lex, source_location_t &loc) {
-      
+    
+    static alp::string _FormatMessage(
+      const alp::string &desc, SourceLocationLexer *lex, 
+      source_location_t &loc, int color=1, const char *prefix="error") {
+
+      alp::string msg;
       const char *pline, *p, *e;
+
       if (lex!=NULL) {
         pline=lex->ptr();
         e=pline+lex->cb();
@@ -44,18 +47,21 @@ class SyntaxError : public std::exception {
         for(p=pline+loc.cidx;p<e;p++) if ((*p=='\r')||(*p=='\n')) break;
 
 
-        _msg=alp::string::Format(
-          "\x1b[1m%s:%i:%i: \x1b[31;1merror: \x1b[30;0m%.*s\n%.*s\n",
+        msg=alp::string::Format(
+          "\x1b[1m%s:%i:%i: \x1b[3%i;1m%s: \x1b[30;0m%.*s\n%.*s\n",
           lex->unitName(),loc.lidx,loc.cidx,
+          color,prefix,
           desc.len,desc.ptr,
           (size_t)p-(size_t)pline,pline);
-        _msg.resize(_msg.len+loc.cidx+2,'-');
-        _msg.ptr[_msg.len-2]='^';
-        _msg.ptr[_msg.len-1]='\n';
+        msg.resize(msg.len+loc.cidx+2,'-');
+        msg.ptr[msg.len-2]='^';
+        msg.ptr[msg.len-1]='\n';
       } else {
-        _msg="Syntax error: "+desc;
+        msg=alp::string::Format(
+          "\x1b[3%i;1mSyntax %s\x1b[30;0m: %.*s\n",
+          color,prefix,desc.len,desc.ptr);
       }
-
+      return msg;
     }
   public:
     /** Constructor.
@@ -63,9 +69,7 @@ class SyntaxError : public std::exception {
       * \param lex Optional lexer to use for building the error message.
       */
     SyntaxError(const alp::string &desc, SourceLocationLexer *lex=NULL) {
-      source_location_t loc;
-      if (lex!=NULL) loc=lex->loc();
-      _common_ctor(desc,lex,loc);
+      _msg=FormatMessage(desc,lex);
     }
     /** Constructor.
       * \param desc Description of the syntax error.
@@ -76,14 +80,36 @@ class SyntaxError : public std::exception {
       const alp::string &desc, 
       SourceLocationLexer *lex, const source_location_t &loc_in) {
       source_location_t loc=loc_in;
-      if (loc.raw_offset>=lex->cb()) _common_ctor(desc,NULL,loc);
-      else _common_ctor(desc,lex,loc);
+      if (loc.raw_offset>=lex->cb()) _msg=FormatMessage(desc);
+      else _msg=FormatMessage(desc,lex,loc);
     }
 
     virtual const char *what() const noexcept {
       return _msg.ptr;
     }
+
+    static alp::string FormatMessage(
+      const alp::string &desc, SourceLocationLexer *lex=NULL, int color=1, 
+      const char *prefix="error") {
+      source_location_t loc;
+      if (lex!=NULL) loc=lex->loc();
+      return _FormatMessage(desc,lex,loc,color,prefix);
+    }
+    static alp::string FormatMessage(
+      const alp::string &desc, SourceLocationLexer *lex, 
+      const source_location_t &loc_in, int color=1, 
+      const char *prefix="error") {
+      source_location_t loc=loc_in;
+      if (loc.raw_offset>=lex->cb()) return FormatMessage(desc,NULL,loc);
+      else return FormatMessage(desc,lex,loc);
+    }
 };
+
+#define SyntaxWarning(desc,lex) { \
+  alp::string msg=SyntaxError::FormatMessage(desc,lex,3,"warning"); \
+  alp::logf("%.*s",alp::LOGT_WARNING,msg.len,msg.ptr); \
+}
+
 
 /** Exception thrown when an error occurs during the execution of a job
   */

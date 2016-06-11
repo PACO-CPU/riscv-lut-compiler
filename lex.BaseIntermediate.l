@@ -35,6 +35,7 @@ any .
 
 "name" { EMIT_SYMBOL(TOK_KWNAME); }
 "segment" { EMIT_SYMBOL(TOK_KWSEGMENT); }
+"domain" { EMIT_SYMBOL(TOK_KWDOMAIN); }
 
 {integer} { 
   _loc_last=_loc; 
