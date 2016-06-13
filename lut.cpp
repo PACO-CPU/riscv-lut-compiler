@@ -387,8 +387,8 @@ void LookupTable::parseIntermediate(
         if (domainDefined) 
           SyntaxWarning("domain redefined",lex);
 
-        newSegment.x0=ARGUI;
-        newSegment.x1=ARGUI;
+        newSegment.width=ARGUI;
+        newSegment.prefix=ARGUI;
         newSegment.y0=ARG;
         newSegment.y1=ARG;
 
@@ -471,7 +471,7 @@ void LookupTable::generateIntermediateFormat(alp::string &res) {
   res+="\n";
   for(size_t i=0;i<_segments.len;i++) {
     res+="segment";
-    res+=alp::string::Format(" %lu %lu",_segments[i].x0,_segments[i].x1);
+    res+=alp::string::Format(" %lu %lu",_segments[i].prefix,_segments[i].width);
     addnum(_segments[i].y0);
     addnum(_segments[i].y1);
     res+="\n";
@@ -546,6 +546,37 @@ void LookupTable::computeSegmentSpace() {
     _segment_space_width++);
   _segment_space_offset=first;
 
+  if (_segment_space_width<=_arch.segmentBits) {
+    // not really a problem but this makes us an exact map of the specified
+    // domain and the programmer might be interested in this fact.
+    alp::logf(
+      "INFO: input domain does not exceed the number of segments\n",
+      alp::LOGT_INFO);
+
+    // todo: (7194) Should we really increment the domain size here (to use
+    // all possible segments)? Should we perhaps handle this case differently?
+    // (no strategies but rather an exact mapping)
+    _segment_space_width=_arch.segmentBits;
+  }
+
+}
+
+void LookupTable::computePrincipalSegments() {
+  
+  seg_loc_t loc;
+  Bounds::interval_t interval;
+
+  _segments.clear();
+  
+  for(loc.segment=0;loc.segment<(1L<<_arch.segmentBits);loc.segment++) {
+    loc.offset=0;
+    segmentToInputSpace(loc,interval.start);
+    loc.offset=1;
+    segmentToInputSpace(loc,interval.end);
+    if (_bounds.intersectsWith(interval))
+      _segments.insert(segment_t(loc.segment,1));
+  }
+
 }
 
 
@@ -553,11 +584,11 @@ void LookupTable::segmentToInputSpace(const seg_loc_t &seg, seg_data_t &inp) {
 
   uint64_t segment_offset = 
     // offset of the segment start from the beginning of the segment space
-    (((uint64_t)seg.segment&((1uL<<_arch.selectorBits)-1)) 
-    << (_segment_space_width-_arch.selectorBits)) +
+    (((uint64_t)seg.segment&((1uL<<_arch.segmentBits)-1)) 
+    << (_segment_space_width-_arch.segmentBits)) +
 
     // offset into the segment
-    (uint64_t)((1uL<<(_segment_space_width-_arch.selectorBits))*seg.offset);
+    (uint64_t)((1uL<<(_segment_space_width-_arch.segmentBits))*seg.offset);
 
   // todo: add support for floating-point offsets or emit an error/warning
   inp=(int64_t)segment_offset+_segment_space_offset.data_i;
@@ -570,13 +601,13 @@ void LookupTable::inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp) {
       (uint64_t)(inp.data_i-_segment_space_offset.data_i)
       &((1uL<<_segment_space_width)-1));
 
-  seg.segment=segment_offset>>(_segment_space_width-_arch.selectorBits);
+  seg.segment=segment_offset>>(_segment_space_width-_arch.segmentBits);
   
-  segment_offset&=(1uL<<(_segment_space_width-_arch.selectorBits))-1;
+  segment_offset&=(1uL<<(_segment_space_width-_arch.segmentBits))-1;
 
   seg.offset=
     (double)segment_offset/
-    (double)(1uL<<(_segment_space_width-_arch.selectorBits));
+    (double)(1uL<<(_segment_space_width-_arch.segmentBits));
 
 }
 
@@ -594,6 +625,7 @@ void LookupTable::inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp) {
     ; \
   lut.parseInput(input,strlen(input),"test lut"); \
   lut.computeSegmentSpace(); \
+  lut.computePrincipalSegments(); \
   Assertf( \
     lut.segment_space_offset()==seg_data_t(offset),\
     "Erroneous segment space offset: %lli, expected %li\n", \
@@ -624,20 +656,41 @@ void LookupTable::inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp) {
     "expected: (%u,%f)\n", \
     pos,seg.segment,seg.offset, _segment,_offset); \
 }
-
+#define TEST_SEGMENTS(code) { \
+  alp::array_t<segment_t> segments=lut.segments().dup(); \
+  code \
+  for(size_t i=0;i<segments.len;i++) \
+    Assertf( \
+      segments.len==0, \
+      "Stray segment: %i %i \n",segments[i].prefix,segments[i].width); \
+}
+#define SEGMENT(prefix,width) { \
+  int idx; \
+  if ((idx=segments.find_eq(segment_t(prefix,width)))<0) \
+    Assertf( \
+      false, \
+      "Missing expected segment (prefix: %i, width: %i)\n", \
+      prefix,width); \
+  else \
+    segments.remove(idx); \
+}
 unittest( 
   /* 
     testing:
       LookupTable::computeSegmentSpace
       LookupTable::segmentToInputSpace
       LookupTable::inputToSegmentSpace
+      LookupTable::computePrincipalSegments
   */
 
   options_t opts;
-  opts.arch.segmentBits=3;
   opts.arch.selectorBits=4;
-  
+
+  opts.arch.segmentBits=1; // two segments will be generated
   TEST_BOUNDS( "(1,2)", 1, 1, )
+
+  opts.arch.segmentBits=3; // eight segments will be generated
+  TEST_BOUNDS( "(1,2)", 1, 3, )
   TEST_BOUNDS( "(13,17)", 13, 3, )
   TEST_BOUNDS( "(127,140) (180,255)", 127, 8, ) 
   TEST_BOUNDS( "(-9,-4) (2,8)", -9, 5, )
@@ -645,63 +698,85 @@ unittest(
 
   TEST_BOUNDS( "(4,259) ", 4, 8,
     TEST_TRANSL_S2I( 0x0, 0., 4 )
-    TEST_TRANSL_S2I( 0x1, 0., 20 )
-    TEST_TRANSL_S2I( 0xf, 0., 244 )
-    TEST_TRANSL_S2I( 0xf, 0.5, 252 )
+    TEST_TRANSL_S2I( 0x1, 0., 36 )
+    TEST_TRANSL_S2I( 0x7, 0., 228 )
+    TEST_TRANSL_S2I( 0x7, 0.5, 244 )
 
     TEST_TRANSL_I2S( 4,   0x0, 0. )
     TEST_TRANSL_I2S( 260, 0x0, 0. )
-    TEST_TRANSL_I2S( 300, 0x2, 0.5 )
-
+    TEST_TRANSL_I2S( 300, 0x1, 0.25 )
+    
+    TEST_SEGMENTS(
+      for (size_t i=0;i<8;i++)
+        SEGMENT(i,1)
+    )
   )
+
+  TEST_BOUNDS( "(0,32) (254,255)", 0,8,
+    TEST_SEGMENTS(
+      SEGMENT(0,1)
+      SEGMENT(1,1)
+      SEGMENT(7,1)
+    )
+  )
+
 )
 #undef TEST_BOUNDS
 #undef TEST_TRANSL_S2I
 #undef TEST_TRANSL_I2S
+#undef TEST_SEGMENTs
+#undef SEGMENT
 
 
-void LookupTable::addSegment(const segment_t &seg, bool correctOverlap) {
+bool LookupTable::addSegment(const segment_t &seg, bool failOnOverlap) {
   size_t idx;
   for (idx=0;idx<_segments.len;idx++) {
-    if (_segments[idx].x0>seg.x1) break; // we precede 
-    if (_segments[idx].x1<seg.x0) continue; // we succede
+    if (_segments[idx].prefix>=seg.prefix+seg.width) break; // we precede 
+    if (_segments[idx].prefix+_segments[idx].width<=seg.prefix) 
+      continue; // we succede
 
-    if (!correctOverlap)
+    if (!failOnOverlap)
       throw RuntimeError(
         alp::string::Format(
           "the new segment (%u:%u) overlaps with another one",
-          seg.x0,seg.x1));
-    
-    if (_segments[idx].x0<seg.x1) {
-      // we supersede the ending -> crop the other one
-      _segments[idx].x1=seg.x0;
+          seg.prefix,seg.prefix+seg.width));
 
-    } else if (_segments[idx].x1>seg.x1) {
-      // we supersede the beginning -> crop the other one, done
-      _segments[idx].x0=seg.x1;
-
-      break; // we cannot touch the next one
-    } else {
-      // we overlap completely -> remove the other one
-      _segments.remove(idx);
-      idx--;
-    }
+    return false;
   }
   _segments.insert(seg,idx);
+  return true;
 }
 
-void LookupTable::addSegment(
-  const seg_data_t &x0, const seg_data_t &x1, bool correctOverlap) {
+
+bool LookupTable::addSegment(
+  const seg_data_t &x0, const seg_data_t &x1, bool failOnOverlap) {
   
   segment_t seg;
-  seg_loc_t loc;
+  seg_loc_t loc0,loc1;
   
-  inputToSegmentSpace(loc,x0); seg.x0=loc.segment;
-  inputToSegmentSpace(loc,x1); seg.x1=loc.segment;
+  inputToSegmentSpace(loc0,x0);
+  inputToSegmentSpace(loc1,x1);
 
-  addSegment(seg,correctOverlap);
+  if (loc0.segment>loc1.segment) return false;
+
+  seg.prefix=loc0.segment;
+  seg.width=loc1.segment-loc0.segment+1;
+
+  return addSegment(seg,failOnOverlap);
 
 
+}
+
+bool LookupTable::addSegment(
+  uint32_t prefix, uint32_t width, bool failOnOverlap) {
+  
+  if (width<1) return false;
+  segment_t seg;
+
+  seg.prefix=prefix;
+  seg.width=width;
+
+  return addSegment(seg,failOnOverlap);
 }
 
 void LookupTable::setSegmentValues(

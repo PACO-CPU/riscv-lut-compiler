@@ -51,6 +51,9 @@ class Bounds {
       if (_data.len<1) return (int64_t)0;
       return _data[_data.len-1].end;
     }
+    
+    bool intersectsWith(const interval_t &ival);
+
     /** Parses a string expected to be of format:
       *        ( '(' number ',' number ')' ) *
       */

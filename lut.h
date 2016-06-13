@@ -252,6 +252,11 @@ class LookupTable {
       */
     void computeSegmentSpace();
     
+    /** Creates a new list of segments selecting all segments of width 1 that
+      * intersect the input domain.
+      */
+    void computePrincipalSegments();
+    
     /** Convertes a coordinate from segment space to input space.
       *
       * \param segment Index of the segment to address. See computeSegmentSpace
@@ -275,13 +280,14 @@ class LookupTable {
     /** Adds a new segment into the LUT.
       *
       * \param seg Segment to insert.
-      * \param correctOverlap Set to true to adjust other segments to
-      * keep the set of segments disjoint. Otherwise it is expected not to
-      * overlap with any other segment.
+      * \param failOnOverlap Set to true to just return false if the new
+      * segment is not disjoint with existing ones. Otherwise an exception is
+      * thrown.
       * \throw RuntimeError The given segment overlaps with another segment
-      * and correctOverlap was set to false.
+      * and failOnOverlap was set to false.
+      * \return true iff the segment was successfully added
       */
-    void addSegment(const segment_t &seg, bool correctOverlap);    
+    bool addSegment(const segment_t &seg, bool failOnOverlap);    
     
     /** Adds a new segment into the LUT.
       *
@@ -291,14 +297,20 @@ class LookupTable {
       *
       * \param x0 Lower boundary of the segment in input space.
       * \param x1 Upper boundary of the segment in input space.
-      * \param correctOverlap Set to true to adjust other segments to
-      * keep the set of segments disjoint. Otherwise it is expected not to
-      * overlap with any other segment.
+      * \param failOnOverlap Set to true to just return false if the new
+      * segment is not disjoint with existing ones. Otherwise an exception is
+      * thrown.
       * \throw RuntimeError The given segment overlaps with another segment
-      * and correctOverlap was set to false.
+      * and failOnOverlap was set to false.
+      * \return true iff the segment was successfully added
       */
-    void addSegment(
-      const seg_data_t &x0, const seg_data_t &x1, bool correctOverlap);
+    bool addSegment(
+      const seg_data_t &x0, const seg_data_t &x1, bool failOnOverlap);
+
+    /** Version of addSegment accepting proper segment boundaries
+      */
+    bool addSegment(uint32_t prefix, uint32_t width, bool failOnOverlap);
+
 
     void removeSegment(size_t index) {
       _segments.remove(index);

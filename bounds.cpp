@@ -39,6 +39,15 @@ bool Bounds::empty() {
   return true;
 }
 
+bool Bounds::intersectsWith(const interval_t &ival) {
+  for(size_t i=0;i<_data.len;i++) {
+    if (_data[i].end<ival.start) continue;
+    if (_data[i].start>ival.end) return false;
+    return true;
+  }
+  return false;
+}
+
 void Bounds::parse(const char *ptr, size_t cb) {
   _data.clear();
    
