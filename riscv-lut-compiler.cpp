@@ -138,21 +138,40 @@ static int run_lut_compilation(options_t &options) {
 
   if (!options.fInputIntermediate) {
     try {
-      if (lut->strategy1()!=segment_strategy::INVALID) {
-        segment_strategy::get(lut->strategy1())->execute(lut,weights,options);
-      } else if (lut->explicit_segments().data().len>0) {
-        const alp::array_t<Bounds::interval_t> &intervals=
-          lut->explicit_segments().data();
-        for(size_t i=0;i<intervals.len;i++)
-          lut->addSegment(intervals[i].start,intervals[i].end,true);
-        // fixme: think about whether specifying 'true' here makes sense.
-      } else {
-        throw RuntimeError(
-          "No segmentation method (strategy / explicit segments) specified");
-      }
+      
+      lut->computeSegmentSpace();
+      lut->computePrincipalSegments();
 
-      if (lut->strategy2()!=segment_strategy::INVALID) {
-        segment_strategy::get(lut->strategy2())->execute(lut,weights,options);
+      // principal segmentation exhibits the maximum resolution possible.
+      // Thus, if it does not use too many segments, we do not want to use
+      // any segmentation strategy.
+
+      if (lut->segments().len<=(1uL<<options.arch.segmentBits)) {
+        alp::logf(
+          "INFO: "
+          "principal segmentation is perfect. Forgoing segmentation phase\n",
+          alp::LOGT_INFO);
+      } else {
+        // only perform segmentation strategies if they are actually needed,
+        // i.e. we have more 
+        lut->clearSegments();
+
+        if (lut->strategy1()!=segment_strategy::INVALID) {
+          segment_strategy::get(lut->strategy1())->execute(lut,weights,options);
+        } else if (lut->explicit_segments().data().len>0) {
+          const alp::array_t<Bounds::interval_t> &intervals=
+            lut->explicit_segments().data();
+          for(size_t i=0;i<intervals.len;i++)
+            lut->addSegment(intervals[i].start,intervals[i].end,true);
+          // fixme: think about whether specifying 'true' here makes sense.
+        } else {
+          throw RuntimeError(
+            "No segmentation method (strategy / explicit segments) specified");
+        }
+
+        if (lut->strategy2()!=segment_strategy::INVALID) {
+          segment_strategy::get(lut->strategy2())->execute(lut,weights,options);
+        }
       }
 
       if (lut->approximation_strategy()!=approx_strategy::INVALID) {
