@@ -52,7 +52,7 @@ class Bounds {
       return _data[_data.len-1].end;
     }
     
-    bool intersectsWith(const interval_t &ival);
+    bool intersectsWith(const interval_t &ival) const;
 
     /** Parses a string expected to be of format:
       *        ( '(' number ',' number ')' ) *
