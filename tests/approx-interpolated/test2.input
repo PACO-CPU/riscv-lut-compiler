@@ -1,0 +1,16 @@
+name = "test2"
+numSegments = 12
+bounds = "(4,7) (31,38)"
+segments = "uniform"
+approximation = "interpolated"
+
+%%
+
+target int -> int
+
+%%
+
+
+int target(int a) {
+  return a;
+}

@@ -1,0 +1,6 @@
+name "test2"
+domain 6  4
+segment 0 1 4 11
+segment 6 1 52 59
+segment 7 1 60 67
+segment 8 1 68 75
