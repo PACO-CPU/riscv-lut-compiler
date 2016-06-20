@@ -872,6 +872,13 @@ void LookupTable::evaluate(size_t addr, uint64_t offset, seg_data_t &res) {
   evaluate(arg_i,res);
 }
 
+seg_data_t LookupTable::evaluate(size_t addr, uint64_t offset) {
+  seg_data_t arg_i,res;
+  hardwareToInputSpace(addr,offset,arg_i);
+  evaluate(arg_i,res);
+  return res;
+}
+
 void LookupTable::translate() {
   // todo: implement 
 }

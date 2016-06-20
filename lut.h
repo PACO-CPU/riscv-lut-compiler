@@ -369,6 +369,19 @@ class LookupTable {
       */
     void evaluate(size_t addr, uint64_t offset, seg_data_t &res);
 
+    /** Computes the target function in hardware space.
+      *
+      * Hardware space takes a segment index and a word made up of selector
+      * and interpolation bits as it would be seen by the HW core's 
+      * LUT multiply-add unit. The number of (least significant) bits used in 
+      * offset depends on the size of the segment space and can be retrieved by
+      * the interpolationBits method.
+      *
+      * \param addr Index of the segment to use.
+      * \param offset Concatenation of selector and interpolation bits
+      */
+    seg_data_t evaluate(size_t addr, uint64_t offset);
+
     /** Translates our set of segments into an architecture-specific
       * bitstream.
       */
