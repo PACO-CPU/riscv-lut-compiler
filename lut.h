@@ -308,6 +308,10 @@ class LookupTable {
       const seg_data_t &x0, const seg_data_t &x1, bool failOnOverlap);
 
     /** Version of addSegment accepting proper segment boundaries
+      *
+      * The segment boundaries are clamped to valid values within the 
+      * segment space before adding it.
+      * Aborts returning false if it ends up empty.
       */
     bool addSegment(uint32_t prefix, uint32_t width, bool failOnOverlap);
 

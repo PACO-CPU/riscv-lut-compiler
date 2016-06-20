@@ -582,16 +582,27 @@ void LookupTable::computePrincipalSegments() {
 
 void LookupTable::segmentToInputSpace(const seg_loc_t &seg, seg_data_t &inp) {
 
-  uint64_t segment_offset = 
+  uint64_t segment_begin = 
     // offset of the segment start from the beginning of the segment space
     (((uint64_t)seg.segment&((1uL<<_arch.segmentBits)-1)) 
-    << (_segment_space_width-_arch.segmentBits)) +
+    << (_segment_space_width-_arch.segmentBits));
+  
+  // make it so that an offset of 1 would theoretically be the beginning of
+  // the next interval, however we clamp it to a location within our interval.
+  uint64_t segment_width=(1uL<<(_segment_space_width-_arch.segmentBits));
 
-    // offset into the segment
-    (uint64_t)((1uL<<(_segment_space_width-_arch.segmentBits))*seg.offset);
+  uint64_t segment_offset=0;// offset into the segment
+  
+  // skip negative, NaN and -inf (default to zero)
+  if (seg.offset>0) {
+    segment_offset=(uint64_t)(segment_width*seg.offset);
+    if (segment_offset>=segment_width) segment_offset=segment_width-1;
+  }
 
   // todo: add support for floating-point offsets or emit an error/warning
-  inp=(int64_t)segment_offset+_segment_space_offset.data_i;
+  inp=
+    (int64_t)segment_begin+(int64_t)segment_offset+
+    _segment_space_offset.data_i;
 
 }
 void LookupTable::inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp) {
@@ -769,6 +780,11 @@ bool LookupTable::addSegment(
 
 bool LookupTable::addSegment(
   uint32_t prefix, uint32_t width, bool failOnOverlap) {
+
+  uint32_t num_principal_segments=1uL<<_arch.segmentBits;
+  
+  if (prefix>=num_principal_segments) return false;
+  if (prefix+width>num_principal_segments) width=num_principal_segments-prefix;
   
   if (width<1) return false;
   segment_t seg;
