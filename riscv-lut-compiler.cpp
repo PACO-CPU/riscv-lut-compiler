@@ -188,6 +188,81 @@ static int run_lut_compilation(options_t &options) {
         options.fnInput.ptr,e.what());
       return 1;
     }
+    if (options.fGenerateGnuplot) {
+      try {
+        options.computeOutputName();
+        FILE *f=fopen(
+          alp::string::Format("%s.dat",options.outputName.ptr).ptr,"w");
+        seg_data_t x_raw,y_raw,weight_raw;
+        double weight=1;
+
+        fprintf(f,"target\n");
+        for(size_t i_segment=0;i_segment<lut->segments().len;i_segment++) {
+          const segment_t &seg=lut->segments()[i_segment];
+          for(
+            uint64_t x=0;
+            x<(((uint64_t)seg.width)<<lut->segment_interpolation_bits());
+            x++) {
+            lut->hardwareToInputSpace(i_segment,x,x_raw);
+            lut->evaluate(i_segment,x,y_raw);
+            if (weights!=NULL) {
+              weights->evaluate(x_raw,weight_raw);
+              weight=(double)weight_raw;
+            }
+
+            fprintf(f,"%g\t%g\t%g\n",(double)x_raw,(double)y_raw,weight);
+          }
+        }
+        fprintf(f,"\n\n");
+
+        fprintf(f,"segments\n");
+        for(size_t i_segment=0;i_segment<lut->segments().len;i_segment++) {
+          const segment_t &seg=lut->segments()[i_segment];
+          
+          lut->hardwareToInputSpace(
+            i_segment,0,x_raw);
+          lut->hardwareToInputSpace(
+            i_segment,
+            ((uint64_t)seg.width)<<lut->segment_interpolation_bits(),y_raw);
+            fprintf(
+              f,"%g\t%g\t%g\t%g\n",
+              (double)x_raw,(double)y_raw,(double)seg.y0,(double)seg.y1);
+        }
+        fprintf(f,"\n\n");
+
+        fclose(f);
+
+        f=fopen(
+          alp::string::Format("%s.gnuplot",options.outputName.ptr).ptr,"w");
+        
+        fprintf(f,
+          "set terminal pdf\n"
+          "set output '%s.lut.pdf'\n"
+          "\n"
+          "set title \"visualization of LUT '%s'\"\n"
+          "set grid\n"
+          "set xlabel \"input word\"\n"
+          "set ylabel \"output word\"\n"
+          "plot \\\n"
+          "  '%s.lut.dat' i 0 "
+            "u 1:2 with points title \"target function\", \\\n"
+          "  '%s.lut.dat' i 1 "
+            "u 1:3:($2-$1):($4-$3) with vectors title \"segments\"\n",
+          options.outputBase.ptr,
+          options.outputBase.ptr,
+          options.outputBase.ptr,
+          options.outputBase.ptr);
+        fclose(f);
+
+      } catch(RuntimeError &e) {
+        fprintf(
+          stderr,"\x1b[31;1mError generating gnuplot files for %s: "
+          "%s\x1b[30;0m\n",
+          options.fnInput.ptr,e.what());
+        return 1;
+      }
+
+    }
   }
   try {
     options.computeOutputName();

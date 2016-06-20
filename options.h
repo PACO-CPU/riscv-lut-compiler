@@ -26,11 +26,14 @@ struct options_t {
   int fOutputC;
   
   int maxWeightSteps;
+
+  int fGenerateGnuplot;
   
   alp::string fnInput;
   alp::string fnArch;
   alp::string lutName;
   alp::string outputName;
+  alp::string outputBase;
 
   alp::string cmdCompileSO;
   alp::string cmdCompileTargetO;

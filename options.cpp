@@ -13,6 +13,7 @@ options_t::options_t() :
   fOutputIntermediate(0),
   fOutputC(0),
   maxWeightSteps(Default_maxWeightSteps),
+  fGenerateGnuplot(0),
   cmdCompileSO(Default_cmdCompileSO()),
   cmdCompileTargetO(Default_cmdCompileTargetO())
   // strings initialize themselves to ""
@@ -73,6 +74,9 @@ void options_t::print(FILE *f) {
     "  --cmd-compile-target-o <command>\n"
     "    specify the command to use for building object filess on the\n"
     "    target platform. default: `%s`\n"
+    "  -g|--gnuplot\n"
+    "    create a gnuplot file for visualizing the target function and\n"
+    "    generated segments. Can only be used with input files.\n"
     "\n"
     "environment variables:\n"
     "  " ENV_CMD_SO "\n"
@@ -121,6 +125,7 @@ int options_t::parseCommandLine(int argn, const char **argv) {
         else if (strncmp("-W",argv[i],2)==0) vfsWeights.addPath(argv[i]+2);
         else if (LSWITCH("--cmd-compile-so")) state=CmdCompileSO;
         else if (LSWITCH("--cmd-compile-target-o")) state=CmdCompileTargetO;
+        else if (SWITCH("-g","--gnuplot")) fGenerateGnuplot=1;
         else if (SWITCH("-h","--help")) {
           print(stdout);
           return 2;
@@ -209,6 +214,7 @@ void options_t::computeOutputName() {
   
   if (!fInputWeights && (lutName.len>0)) {
     outputName=lutName;
+    outputBase=lutName;
   } else {
     outputName=fnInput;
     for(ssize_t i=(ssize_t)fnInput.len-1;i>-1;i--)
@@ -216,6 +222,12 @@ void options_t::computeOutputName() {
         outputName.resize(i); 
         break;
       } else if (outputName.ptr[i]=='/') {
+        break;
+      }
+    outputBase=outputName;
+    for(ssize_t i=(ssize_t)outputName.len-1;i>-1;i--)
+      if (outputName.ptr[i]=='/') {
+        outputBase=outputName.ptr+i+1;
         break;
       }
   }
@@ -229,5 +241,6 @@ void options_t::computeOutputName() {
   } else {
     outputName+=".o";
   }
+ 
 }
 
