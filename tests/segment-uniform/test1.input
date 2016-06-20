@@ -1,0 +1,14 @@
+name = "test1"
+bounds = "(0,1023)"
+segments = "uniform"
+
+%%
+
+target int -> int
+
+%%
+
+
+int target(int a) {
+  return 0;
+}
