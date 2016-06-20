@@ -7,8 +7,8 @@ static void _execute(
   for(size_t i=0;i<segments.len;i++) {
     lut->setSegmentValues(
       i,
-      lut->evaluate(seg_loc_t(segments[i].prefix,0)),
-      lut->evaluate(seg_loc_t(segments[i].prefix+segments[i].width-1,1)));
+      lut->evaluate(i,0),
+      lut->evaluate(i,(segments[i].width<<lut->segment_interpolation_bits())));
   }
 
 }

@@ -18,8 +18,8 @@ static void _handle_segment(
 
   for(uint64_t x=0;x<point_count;x++) {
     double w=1,y;
-    lut->hardwareToInputSpace(seg.prefix,x,x_raw);
-    lut->evaluate(seg.prefix,x,y_raw);
+    lut->hardwareToInputSpace(index,x,x_raw);
+    lut->evaluate(index,x,y_raw);
     if (weights!=NULL) {
       weights->evaluate(x_raw,weight_raw);
       w=(double)weight_raw;
