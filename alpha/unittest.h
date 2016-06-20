@@ -47,6 +47,7 @@ struct unittest_t {
 #define unittest_concat_id(a,b) a##b
 #define unittest_stringify(a) #a
 #define unittest_with_id(id,ln,...) \
+namespace { \
 struct unittest_concat_id(unittest_,id) : public alp::unittest_t { \
   unittest_concat_id(unittest_,id)() : \
     alp::unittest_t( \
@@ -55,7 +56,8 @@ struct unittest_concat_id(unittest_,id) : public alp::unittest_t { \
     __VA_ARGS__ \
     _finalize(); \
   } \
-} unittest_concat_id(_unittest_,id);
+} unittest_concat_id(_unittest_,id); \
+}
 
 #define unittest(...) unittest_with_id(__COUNTER__,__LINE__,__VA_ARGS__)
 } // namespace alp
