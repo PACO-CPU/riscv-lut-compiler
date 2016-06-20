@@ -40,7 +40,17 @@ void arch_config_t::parse(const char *ptr, size_t cb, const char *name) {
         
         if (0) {
         KVTEST("numSegments",Integer)
-          numSegments=kv->val_num();
+          numSegments=kv->val_num().data_i;
+        KVTEST("segmentBits",Integer)
+          segmentBits=kv->val_num().data_i;
+        KVTEST("selectorBits",Integer)
+          selectorBits=kv->val_num().data_i;
+        KVTEST("interpolationBits",Integer)
+          plaInterconnects=kv->val_num().data_i;
+        KVTEST("domainCutoffThreshold",Float)
+          domainCutoffThreshold=kv->val_num().data_f;
+        KVTEST("resolutionWarnThreshold",Float)
+          resolutionWarnThreshold=kv->val_num().data_f;
 
         } else {
           throw SyntaxError("unknown arch key-value",lex);

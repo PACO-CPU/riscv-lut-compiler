@@ -1,6 +1,7 @@
 name = "test2"
 bounds = "(0,191) (320,1023)"
 segments = "uniform"
+approximation = "interpolated"
 
 %%
 

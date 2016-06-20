@@ -155,15 +155,15 @@ void LookupTable::parseInput(const char *ptr, size_t cb, const char *name) {
         KVTEST("name",String)
           _ident=kv->val_str();
           identDefined=true;
-        KVTEST("num-segments",Integer)
-          _num_segments=kv->val_num();
-        KVTEST("num-primary-segments",Integer)
-          _num_primary_segments=kv->val_num();
+        KVTEST("numSegments",Integer)
+          _num_segments=kv->val_num().data_i;
+        KVTEST("numPrimarySegments",Integer)
+          _num_primary_segments=kv->val_num().data_i;
         KVTEST("segments",String)
           _strategy1=ParseSegmentStrategy(kv->val_str());
         KVTEST("segments2",String)
           _strategy2=ParseSegmentStrategy(kv->val_str());
-        KVTEST("explicit-segments",String)
+        KVTEST("explicitSegments",String)
           _explicit_segments.parse(kv->val_str().ptr,kv->val_str().len);
         KVTEST("weights",String)
           _fn_weights=kv->val_str();
