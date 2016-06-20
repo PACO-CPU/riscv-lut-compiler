@@ -86,15 +86,15 @@ struct seg_data_t {
   operator int() const {
     switch(kind) {
       default:
-      case Integer: return (int)(int64_t)data_f;
-      case Double:  return data_i;
+      case Integer: return (int)(int64_t)data_i;
+      case Double:  return (int)data_f;
     }
   }
   operator int64_t() const {
     switch(kind) {
       default:
-      case Integer: return (int64_t)data_f;
-      case Double:  return data_i;
+      case Integer: return (int64_t)data_i;
+      case Double:  return (int64_t)data_f;
     }
   }
   operator double() const {
@@ -102,6 +102,18 @@ struct seg_data_t {
       default:
       case Integer: return (double)data_i;
       case Double:  return data_f;
+    }
+  }
+  
+  /** Adds a conversion of b to our internal data.
+    *
+    * WARNING: this does not commute.
+    */
+  seg_data_t operator+(const seg_data_t &b) const {
+    switch(kind) {
+      default:
+      case Integer: return seg_data_t(data_i+(int64_t)b);
+      case Double:  return seg_data_t(data_f+(double)b);
     }
   }
 

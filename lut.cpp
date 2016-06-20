@@ -622,6 +622,39 @@ void LookupTable::inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp) {
 
 }
 
+void LookupTable::hardwareToInputSpace(size_t addr, uint64_t offset, seg_data_t &inp) {
+  if (addr>=_segments.len)
+    throw RuntimeError(
+      alp::string::Format(
+        "Segment index %lu out of bounds [0,%lu)",addr,_segments.len));
+  
+  segment_t &seg=_segments[addr];
+
+  // determine where in the input word our interpolation bits reside.
+  int offsetShift=0;
+  int interpolationBits=
+    _segment_space_width-_arch.selectorBits;
+
+  if (interpolationBits>_arch.interpolationBits) {
+    offsetShift=interpolationBits-_arch.interpolationBits;
+    interpolationBits=_arch.interpolationBits;
+  }
+
+  
+  // clamp offset to the number of data points in the segment
+  if (offset>=(((uint64_t)seg.width)<<interpolationBits)) {
+    offset=(((uint64_t)seg.width)<<interpolationBits)-1;
+  }
+  // shift offset to the correct level in our segment space
+  if (offsetShift>0) offset<<= offsetShift;
+  
+  // move the offset relative to the segment beginning
+  offset+=seg.prefix<<(_segment_space_width-_arch.selectorBits);
+  
+  inp=_segment_space_offset+seg_data_t((int64_t)offset);
+
+}
+
 #define TEST_BOUNDS(bounds,offset,width,code) { \
  \
   LookupTable lut(opts); \
@@ -833,6 +866,11 @@ seg_data_t LookupTable::evaluate(const seg_loc_t &arg) {
   return res;
 }
 
+void LookupTable::evaluate(size_t addr, uint64_t offset, seg_data_t &res) {
+  seg_data_t arg_i;
+  hardwareToInputSpace(addr,offset,arg_i);
+  evaluate(arg_i,res);
+}
 
 void LookupTable::translate() {
   // todo: implement 

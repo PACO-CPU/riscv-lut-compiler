@@ -136,6 +136,14 @@ class LookupTable {
     }
     int segment_space_width() const { return _segment_space_width; }
 
+    int segment_interpolation_bits() const {
+      int res=_segment_space_width-_arch.selectorBits;
+      if (res>_arch.interpolationBits) {
+        res=_arch.interpolationBits;
+      }
+      return res;
+    }
+
     /** Attempts to retrieve a named key-value.
       *
       * \param key Name of the keyvalue to retrieve.
@@ -275,6 +283,14 @@ class LookupTable {
       * \param inp Location to translate to segment space
       */
     void inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp);
+
+    /** Convertes a coordinate from hardware space to input space.
+      *
+      * \param addr Index of the segment.
+      * \param offset Interpolation bits.
+      * \param inp Result of the coordinate translation.
+      */
+    void hardwareToInputSpace(size_t addr, uint64_t offset, seg_data_t &inp);
     
     const alp::array_t<segment_t> &segments() const { return _segments; }
     /** Adds a new segment into the LUT.
@@ -339,6 +355,19 @@ class LookupTable {
     /** Computes the target function at a point in segment space
       */
     seg_data_t evaluate(const seg_loc_t &arg);
+
+    /** Computes the target function in hardware space.
+      *
+      * Hardware space takes a segment index and a word made up of selector
+      * and interpolation bits as it would be seen by the HW core's 
+      * LUT multiply-add unit. The number of (least significant) bits used in 
+      * offset depends on the size of the segment space and can be retrieved by
+      * the interpolationBits method.
+      *
+      * \param addr Index of the segment to use.
+      * \param offset Concatenation of selector and interpolation bits
+      */
+    void evaluate(size_t addr, uint64_t offset, seg_data_t &res);
 
     /** Translates our set of segments into an architecture-specific
       * bitstream.
