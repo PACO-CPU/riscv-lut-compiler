@@ -6,6 +6,12 @@
 struct arch_config_t {
   enum {
     Default_numSegments = 8,
+    // 16 LUT records available
+    Default_segmentBits = 4, 
+    // 3 variables input into the PLA (select 8 segments)
+    Default_selectorBits = 3,
+    // 8 bits of interpolation / 256 points
+    Default_interpolationBits = 8, 
   };
   // options go here.
   // todo: define more arguments depending on the LUT meta-architecture
@@ -56,7 +62,13 @@ struct arch_config_t {
   // todo: specify default strategies
   
   arch_config_t() : 
-    numSegments(Default_numSegments)
+    numSegments(Default_numSegments),
+    segmentBits(Default_segmentBits),
+    selectorBits(Default_selectorBits),
+    interpolationBits(Default_interpolationBits),
+    plaInterconnects(Default_interpolationBits),
+    domainCutoffThreshold(1), // no cutoff
+    resolutionWarnThreshold(0) // no warning
     {
   }
 
