@@ -146,7 +146,7 @@ static int run_lut_compilation(options_t &options) {
       // Thus, if it does not use too many segments, we do not want to use
       // any segmentation strategy.
 
-      if (lut->segments().len<=(1uL<<options.arch.segmentBits)) {
+      if (lut->segments().len<=(1uL<<options.arch.selectorBits)) {
         alp::logf(
           "INFO: "
           "principal segmentation is perfect. Forgoing segmentation phase\n",
