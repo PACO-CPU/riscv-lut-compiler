@@ -452,8 +452,8 @@ template<class C> struct sorted_array_t {
     
     make_unique();
     
-    int l=0, r=len-2;
-    for(l=0;l<len-1;l++) if (ptr[l]>item) { break; }
+    ssize_t l=0, r=len-2;
+    for(l=0;l<(ssize_t)len-1;l++) if (ptr[l]>item) { break; }
     
     while(l<r) {
       int c=(l+r)/2;
@@ -469,7 +469,7 @@ template<class C> struct sorted_array_t {
     
     
     
-    if ((l<0)||(l>=len)) l=len-1;
+    if ((l<0)||(l>=(ssize_t)len)) l=len-1;
     else {
       memmove(ptr+l+1,ptr+l,(len-l-1)*sizeof(C));
     }
