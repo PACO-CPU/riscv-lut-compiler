@@ -11,7 +11,14 @@ namespace segment_strategy {
     typedef void (*execute_t) (
       LookupTable *lut, WeightsTable *weights, options_t &options);
 
-    execute_t execute;
+    typedef uint32_t (*subdivide_t) (
+      LookupTable *lut, WeightsTable *weights, const options_t &options,
+      uint32_t first, uint32_t last, uint32_t max_count);
+
+    subdivide_t subdivide;
+
+    void execute(
+      LookupTable *lut, WeightsTable *weights, options_t &options) const;
   };
 
   #define SEGMENT_STRATEGY(id,name) extern const record_t id;

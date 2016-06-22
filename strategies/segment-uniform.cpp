@@ -99,9 +99,9 @@ static int _min_required_width(
 /** Subdivides a subrange of the LUT's segment space with at most max_count
   * segments, returns the number of segments used.
   */
-static uint32_t _subdivide(
-  LookupTable *lut, const options_t &options, uint32_t first, uint32_t last,
-  uint32_t max_count) {
+static uint32_t _subdivide_main(
+  LookupTable *lut, WeightsTable *weights, const options_t &options, 
+  uint32_t first, uint32_t last, uint32_t max_count) {
   int width;
   uint32_t count;
 
@@ -113,6 +113,7 @@ static uint32_t _subdivide(
 
 }
 
+#if 0
 /** Segmentation strategy dividing the LUT's segment space into segments
   * of equal width.
   *
@@ -166,10 +167,10 @@ static void _execute(
       lut->num_primary_segments());
   }
 }
-
+#endif
 namespace segment_strategy {
   const record_t UNIFORM {
-    .execute=_execute
+    .subdivide=_subdivide_main
   };
 
 };
