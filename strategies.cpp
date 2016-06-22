@@ -15,6 +15,12 @@ namespace segment_strategy {
     LookupTable *lut, WeightsTable *weights, options_t &options) const {
    
     if (lut->segments().len>0) { // secondary strategy
+      
+      if (subdivide==NULL) 
+        throw RuntimeError(
+          "this segmentation strategy cannot be used as "
+          "secondary segmentation strategy");
+
       alp::array_t<segment_t> primary=lut->segments().dup();
       uint32_t n_total=(1<<options.arch.segmentBits);
       if (primary.len>=n_total) {
@@ -51,8 +57,15 @@ namespace segment_strategy {
       }
 
     } else { // primary strategy 
-      subdivide(lut,weights,options,0,(1<<options.arch.segmentBits)-1,
-        lut->num_primary_segments());
+      if (optimize!=NULL) {
+        lut->computePrincipalSegments();
+        optimize(lut,weights,options);
+
+      } else if (subdivide!=NULL) {
+        subdivide(lut,weights,options,0,(1<<options.arch.segmentBits)-1,
+          lut->num_primary_segments());
+      } else 
+        assert(0 && "segmentation strategy not implemented");
     }
 
   }

@@ -14,17 +14,6 @@
 
 #include <alpha/alpha.h>
 
-/* 
-  todo: add lut hardware-specific:
-    - setting of the lut domain
-      - done in the first segmentation strategy
-      - an interval with a power of two size with an offset
-      - the offset is only used during compilation
-    - evaluation in lut domain
-      - address by segment selector (selectorBits wide) and offset into
-        the segment: use a floating-point value
-*/
-
 
 /** represents a single Lookup table.
   *

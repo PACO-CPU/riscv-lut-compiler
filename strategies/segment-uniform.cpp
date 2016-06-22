@@ -113,61 +113,6 @@ static uint32_t _subdivide_main(
 
 }
 
-#if 0
-/** Segmentation strategy dividing the LUT's segment space into segments
-  * of equal width.
-  *
-  * As primary strategy it performs just that, computing the minimum width
-  * required to cover all of the input domain and applies this.
-  *
-  * As secondary strategy it subdivides each primary segment individually.
-  * This may lead to secondary segments covering more than one primary
-  * segment and leave segments unused in the end.
-  */
-static void _execute(
-  LookupTable *lut, WeightsTable *weights, options_t &options) {
-  
-  if (lut->segments().len>0) { // secondary strategy
-    alp::array_t<segment_t> primary=lut->segments().dup();
-    uint32_t n_total=(1<<options.arch.segmentBits);
-    if (primary.len>=n_total) {
-      alp::logf(
-        "WARNING: secondary segmentation has no segments left\n",
-        alp::LOGT_WARNING);
-      return;
-    }
-
-    uint32_t n_avail=n_total-primary.len;
-
-    lut->clearSegments();
-
-    for(size_t i=0;i<primary.len;i++) {
-      
-      uint32_t n_each=n_avail/(primary.len-i);
-      // number of segments distributed evenly
-      // + 1 if there are still remainders
-      // + 1 (original segment)
-      uint32_t n_this=n_each + (((n_avail-n_each*(primary.len-i))>0) ? 1 : 0) +1;
-
-      segment_t &seg=primary[i];
-      
-      // philosophy of secondary segmentation is a per-segment re-segmentation.
-      // therefore we perform a local computation of width which allows 
-      // different primary segments to be subdivided with different widths thus
-      // the resulting segmentation may not be uniform anymore.
-      uint32_t count=_subdivide(lut,options,seg.prefix,seg.prefix+seg.width,n_this);
-      
-      // we freed one segment (the original one) and consumed count ones.
-      n_avail=n_avail+1-count;
-
-    }
-
-  } else { // primary strategy 
-    _subdivide(lut,options,0,(1<<options.arch.segmentBits)-1,
-      lut->num_primary_segments());
-  }
-}
-#endif
 namespace segment_strategy {
   const record_t UNIFORM {
     .subdivide=_subdivide_main
