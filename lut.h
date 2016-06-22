@@ -11,6 +11,8 @@
 #include "arch-config.h"
 #include "options.h"
 #include "strategy-def.h"
+#include "weights.h"
+#include "deviation.h"
 
 #include <alpha/alpha.h>
 
@@ -329,7 +331,10 @@ class LookupTable {
     }
     void setSegmentValues(
       size_t index, const seg_data_t &y0, const seg_data_t &y1);
-    
+
+    deviation_t computeSegmentError(
+      error_metric_t metric, WeightsTable *weights, uint32_t index);
+ 
     /** Computes the target function with a point in input space.
       */
     void evaluate(const seg_data_t &arg, seg_data_t &res);

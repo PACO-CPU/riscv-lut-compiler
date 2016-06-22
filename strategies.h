@@ -9,7 +9,8 @@
 namespace segment_strategy {
   struct record_t {
     typedef void (*optimize_t) (
-      LookupTable *lut, WeightsTable *weights, const options_t &options);
+      LookupTable *lut, WeightsTable *weights, const options_t &options,
+      uint32_t max_count);
 
     typedef uint32_t (*subdivide_t) (
       LookupTable *lut, WeightsTable *weights, const options_t &options,
@@ -32,10 +33,14 @@ namespace segment_strategy {
 namespace approx_strategy {
   
   struct record_t {
-    typedef void (*execute_t) (
-      LookupTable *lut, WeightsTable *weights, options_t &options);
+    typedef void (*handle_segment_t) (
+      LookupTable *lut, WeightsTable *weights, options_t &options, 
+      size_t index);
+    
+    handle_segment_t handle_segment;
 
-    execute_t execute;
+    void execute(
+      LookupTable *lut, WeightsTable *weights, options_t &options) const;
   };
 
   #define APPROX_STRATEGY(id,name) extern const record_t id;

@@ -13,10 +13,12 @@ namespace segment_strategy {
 
   void record_t::execute(
     LookupTable *lut, WeightsTable *weights, options_t &options) const {
-   
     if (lut->segments().len>0) { // secondary strategy
       
-      if (subdivide==NULL) 
+      if (optimize!=NULL) {
+        optimize(lut,weights,options,1uL<<options.arch.selectorBits);
+        return;
+      } else if (subdivide==NULL) 
         throw RuntimeError(
           "this segmentation strategy cannot be used as "
           "secondary segmentation strategy");
@@ -59,7 +61,7 @@ namespace segment_strategy {
     } else { // primary strategy 
       if (optimize!=NULL) {
         lut->computePrincipalSegments();
-        optimize(lut,weights,options);
+        optimize(lut,weights,options,lut->num_primary_segments());
 
       } else if (subdivide!=NULL) {
         subdivide(lut,weights,options,0,(1<<options.arch.segmentBits)-1,
@@ -80,6 +82,13 @@ namespace approx_strategy {
     } else
       assert(0 && "Invalid approximation strategy ID propagated");
     return NULL;
+  }
+
+  void record_t::execute(
+    LookupTable *lut, WeightsTable *weights, options_t &options) const {
+
+    for(size_t idx=0;idx<lut->segments().len;idx++)
+      handle_segment(lut,weights,options,idx);
   }
 
 } // namespace approx_strategy

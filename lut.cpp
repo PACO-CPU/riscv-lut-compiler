@@ -841,6 +841,41 @@ void LookupTable::setSegmentValues(
 
 }
 
+deviation_t LookupTable::computeSegmentError(
+  error_metric_t metric, WeightsTable *weights, uint32_t index) {
+  
+  const segment_t &seg=_segments[index];
+  uint64_t point_count=((uint64_t)seg.width)<<segment_interpolation_bits();
+  seg_data_t x_raw,y_raw,weight_raw;
+  double
+    sum_w=0,
+    sum_e=0,
+    base=seg.y0,
+    incline=
+      ((double)seg.y1-(double)seg.y0)/
+      (double)((point_count<1)?1:point_count-1);
+
+  for(uint64_t x=0;x<point_count;x++) {
+    double w=1,y,e;
+    hardwareToInputSpace(index,x,x_raw);
+    evaluate(index,x,y_raw);
+    if (weights!=NULL) {
+      weights->evaluate(x_raw,weight_raw);
+      w=(double)weight_raw;
+    }
+    
+    y=(double)y_raw;
+    e=base+x*incline-y;
+
+    sum_e+=e*e*w;
+    sum_w+=w;
+  }
+  
+  if (sum_w<=0) return deviation_t(0,0);
+
+  return deviation_t(sum_e/sum_w,sum_w);
+}
+
 void LookupTable::evaluate(const seg_data_t &arg, seg_data_t &res) {
   // if _target_func is NULL, the caller was not careful enough.
   assert( (_target_func!=NULL) && "Target function was not loaded" );

@@ -100,16 +100,9 @@ unittest(
 #undef TEST_FUNC
 #undef TEST_SEGMENT
 
-static void _execute(
-  LookupTable *lut, WeightsTable *weights, options_t &options) {
-  
-  for(size_t idx=0;idx<lut->segments().len;idx++)
-    _handle_segment(lut,weights,options,idx);
-}
-
 namespace approx_strategy {
   const record_t LINEAR {
-    .execute=_execute
+    .handle_segment=_handle_segment
   };
 
 };

@@ -100,8 +100,8 @@ class SyntaxError : public std::exception {
       const source_location_t &loc_in, int color=1, 
       const char *prefix="error") {
       source_location_t loc=loc_in;
-      if (loc.raw_offset>=lex->cb()) return FormatMessage(desc,NULL,loc);
-      else return FormatMessage(desc,lex,loc);
+      if (loc.raw_offset>=lex->cb()) return _FormatMessage(desc,NULL,loc);
+      else return _FormatMessage(desc,lex,loc);
     }
 };
 
