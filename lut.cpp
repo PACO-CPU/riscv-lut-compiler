@@ -916,4 +916,6 @@ seg_data_t LookupTable::evaluate(size_t addr, uint64_t offset) {
 
 void LookupTable::translate() {
   // todo: implement 
+    fprintf(
+      stdout,"TRANSLATION REACHED\n");
 }
