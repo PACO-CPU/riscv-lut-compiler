@@ -26,6 +26,8 @@
 #include "types/string.h"
 #include "types/array.h"
 
+#include "pattern/refcount.h"
+
 #include "unittest.h"
 #include "utf.h"
 #include "logging.h"

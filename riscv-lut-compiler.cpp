@@ -12,7 +12,8 @@ int main(int argn, char **argv);
 
 
 static int run_weights_test(options_t &options) {
-  WeightsTable *tbl=new WeightsTable;
+  WeightsTable *tbl=new WeightsTable();
+  tbl->grab();
   FILE *fOutput;
 
   try {
@@ -76,7 +77,7 @@ static int run_weights_test(options_t &options) {
   }
 
   fclose(fOutput);
-  delete tbl;
+  tbl->drop();;
 
   return 0;
 
@@ -117,6 +118,7 @@ static int run_lut_compilation(options_t &options) {
         throw RuntimeError("Unable to locate weights file");
       }
       weights=new WeightsTable();
+      weights->grab();
       weights->parseWeightsFile(fn.ptr);
     } catch(FileIOException &e) {
       fprintf(

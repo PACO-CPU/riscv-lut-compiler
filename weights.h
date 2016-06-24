@@ -11,7 +11,7 @@ extern "C" {
 /** Represents a single weights table as specified in weights data files.
   
   */
-class WeightsTable {
+class WeightsTable : public alp::RCObject {
   public:
     /** Represents a single entry in the weights file.
       */
@@ -28,6 +28,10 @@ class WeightsTable {
         * at that point.
         */
       int    lref;
+
+      /** The weights table this range originally comes from.
+        */
+      WeightsTable *owner;
       
 
       bool contains(const seg_data_t &p) {
@@ -51,13 +55,14 @@ class WeightsTable {
       */
     alp::array_t<range_t> _ranges;
   public:
-    /** Constructor. 
+    
+    /** (Copy) constructor
       *
-      * Creates an empty weights table, evaluating to 0 everywhere.
+      * Creates a deep duplicate of the passed argument if not NULL
       */
-    WeightsTable();
+    WeightsTable(WeightsTable *tbl=NULL);
 
-    ~WeightsTable();
+    virtual ~WeightsTable();
     
     /** Removes all ranges, leaving the weights table as it was right after
       * construction.*/
@@ -90,6 +95,11 @@ class WeightsTable {
       if (_ranges.len<1) return (int64_t)0;
       return _ranges[_ranges.len-1].end;
     }
+    
+    /** Sets a given range to zero by resizing/removing any ranges that 
+      * intersect.
+      */
+    void setZeroRange(const seg_data_t &start, const seg_data_t &end);
     
     /** Returns the weight value at a specific point.
       * 
