@@ -546,17 +546,17 @@ void LookupTable::computeSegmentSpace() {
     _segment_space_width++);
   _segment_space_offset=first;
 
-  if (_segment_space_width<=_arch.segmentBits) {
+  if (_segment_space_width<=_arch.selectorBits) {
     // not really a problem but this makes us an exact map of the specified
     // domain and the programmer might be interested in this fact.
     alp::logf(
-      "INFO: input domain does not exceed the number of segments\n",
+      "INFO: input domain does not exceed the number of possible segments\n",
       alp::LOGT_INFO);
 
     // todo: (7194) Should we really increment the domain size here (to use
     // all possible segments)? Should we perhaps handle this case differently?
     // (no strategies but rather an exact mapping)
-    _segment_space_width=_arch.segmentBits;
+    _segment_space_width=_arch.selectorBits;
   }
 
 }
@@ -568,7 +568,7 @@ void LookupTable::computePrincipalSegments() {
 
   _segments.clear();
   
-  for(loc.segment=0;loc.segment<(1L<<_arch.segmentBits);loc.segment++) {
+  for(loc.segment=0;loc.segment<(1L<<_arch.selectorBits);loc.segment++) {
     loc.offset=0;
     segmentToInputSpace(loc,interval.start);
     loc.offset=1;
@@ -584,12 +584,12 @@ void LookupTable::segmentToInputSpace(const seg_loc_t &seg, seg_data_t &inp) {
 
   uint64_t segment_begin = 
     // offset of the segment start from the beginning of the segment space
-    (((uint64_t)seg.segment&((1uL<<_arch.segmentBits)-1)) 
-    << (_segment_space_width-_arch.segmentBits));
+    (((uint64_t)seg.segment&((1uL<<_arch.selectorBits)-1)) 
+    << (_segment_space_width-_arch.selectorBits));
   
   // make it so that an offset of 1 would theoretically be the beginning of
   // the next interval, however we clamp it to a location within our interval.
-  uint64_t segment_width=(1uL<<(_segment_space_width-_arch.segmentBits));
+  uint64_t segment_width=(1uL<<(_segment_space_width-_arch.selectorBits));
 
   uint64_t segment_offset=0;// offset into the segment
   
@@ -612,13 +612,13 @@ void LookupTable::inputToSegmentSpace(seg_loc_t &seg, const seg_data_t &inp) {
       (uint64_t)(inp.data_i-_segment_space_offset.data_i)
       &((1uL<<_segment_space_width)-1));
 
-  seg.segment=segment_offset>>(_segment_space_width-_arch.segmentBits);
+  seg.segment=segment_offset>>(_segment_space_width-_arch.selectorBits);
   
-  segment_offset&=(1uL<<(_segment_space_width-_arch.segmentBits))-1;
+  segment_offset&=(1uL<<(_segment_space_width-_arch.selectorBits))-1;
 
   seg.offset=
     (double)segment_offset/
-    (double)(1uL<<(_segment_space_width-_arch.segmentBits));
+    (double)(1uL<<(_segment_space_width-_arch.selectorBits));
 
 }
 
@@ -709,6 +709,16 @@ void LookupTable::hardwareToInputSpace(
     "expected: (%u,%f)\n", \
     pos,seg.segment,seg.offset, _segment,_offset); \
 }
+#define TEST_TRANSL_H2I(prefix,width,offset,pos) { \
+  segment_t seg(prefix,width); \
+  seg_data_t inp; \
+  lut.hardwareToInputSpace(seg,offset,inp); \
+  Assertf( \
+    inp==seg_data_t(pos), \
+    "Erroneous translation segment space -> input space: (%u,%u, %u) -> %i, " \
+    "expected: %li\n", \
+    prefix,width,offset, (int)(int64_t)inp, pos); \
+}
 #define TEST_SEGMENTS(code) { \
   alp::array_t<segment_t> segments=lut.segments().dup(); \
   code \
@@ -737,30 +747,32 @@ unittest(
   */
 
   options_t opts;
-  opts.arch.selectorBits=4;
+  opts.arch.segmentBits=3; // up to eight possible segments will be used
 
-  opts.arch.segmentBits=1; // two segments will be generated
+  opts.arch.selectorBits=1; // two different principal segments exist
   TEST_BOUNDS( "(1,2)", 1, 1, )
 
-  opts.arch.segmentBits=3; // eight segments will be generated
-  TEST_BOUNDS( "(1,2)", 1, 3, )
-  TEST_BOUNDS( "(13,17)", 13, 3, )
+  opts.arch.selectorBits=4; // sixteen different principal segments exist
+  TEST_BOUNDS( "(1,2)", 1, 4, )
+  TEST_BOUNDS( "(13,17)", 13, 4, )
   TEST_BOUNDS( "(127,140) (180,255)", 127, 8, ) 
   TEST_BOUNDS( "(-9,-4) (2,8)", -9, 5, )
   TEST_BOUNDS( "(-17,-4) ", -17, 4, )
 
   TEST_BOUNDS( "(4,259) ", 4, 8,
     TEST_TRANSL_S2I( 0x0, 0., 4 )
-    TEST_TRANSL_S2I( 0x1, 0., 36 )
-    TEST_TRANSL_S2I( 0x7, 0., 228 )
-    TEST_TRANSL_S2I( 0x7, 0.5, 244 )
+    TEST_TRANSL_S2I( 0x1, 0., 20 )
+    TEST_TRANSL_S2I( 0x7, 0., 116 )
+    TEST_TRANSL_S2I( 0x7, 0.5, 124 )
 
     TEST_TRANSL_I2S( 4,   0x0, 0. )
     TEST_TRANSL_I2S( 260, 0x0, 0. )
-    TEST_TRANSL_I2S( 300, 0x1, 0.25 )
+    TEST_TRANSL_I2S( 300, 0x2, 0.5 )
+
+    TEST_TRANSL_H2I( 1, 1, 0, 20 )
     
     TEST_SEGMENTS(
-      for (size_t i=0;i<8;i++)
+      for (size_t i=0;i<16;i++)
         SEGMENT(i,1)
     )
   )
@@ -769,7 +781,8 @@ unittest(
     TEST_SEGMENTS(
       SEGMENT(0,1)
       SEGMENT(1,1)
-      SEGMENT(7,1)
+      SEGMENT(2,1)
+      SEGMENT(15,1)
     )
   )
 
@@ -823,7 +836,7 @@ bool LookupTable::addSegment(
 bool LookupTable::addSegment(
   uint32_t prefix, uint32_t width, bool failOnOverlap) {
 
-  uint32_t num_principal_segments=1uL<<_arch.segmentBits;
+  uint32_t num_principal_segments=1uL<<_arch.selectorBits;
   
   if (prefix>=num_principal_segments) return false;
   if (prefix+width>num_principal_segments) width=num_principal_segments-prefix;
@@ -851,9 +864,8 @@ void LookupTable::setSegmentValues(
 }
 
 deviation_t LookupTable::computeSegmentError(
-  error_metric_t metric, WeightsTable *weights, uint32_t index) {
+  error_metric_t metric, WeightsTable *weights, const segment_t &seg) {
   
-  const segment_t &seg=_segments[index];
   uint64_t point_count=((uint64_t)seg.width)<<segment_interpolation_bits();
   seg_data_t x_raw,y_raw,weight_raw;
   double
@@ -866,8 +878,8 @@ deviation_t LookupTable::computeSegmentError(
 
   for(uint64_t x=0;x<point_count;x++) {
     double w=1,y,e;
-    hardwareToInputSpace(index,x,x_raw);
-    evaluate(index,x,y_raw);
+    hardwareToInputSpace(seg,x,x_raw);
+    evaluate(seg,x,y_raw);
     if (weights!=NULL) {
       weights->evaluate(x_raw,weight_raw);
       w=(double)weight_raw;
@@ -879,10 +891,16 @@ deviation_t LookupTable::computeSegmentError(
     sum_e+=e*e*w;
     sum_w+=w;
   }
-  
   if (sum_w<=0) return deviation_t(0,0);
 
   return deviation_t(sum_e/sum_w,sum_w);
+}
+
+deviation_t LookupTable::computeSegmentError(
+  error_metric_t metric, WeightsTable *weights, uint32_t index) {
+  
+  const segment_t &seg=_segments[index];
+  return computeSegmentError(metric,weights,seg);
 }
 
 void LookupTable::evaluate(const seg_data_t &arg, seg_data_t &res) {

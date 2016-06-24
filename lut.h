@@ -341,6 +341,8 @@ class LookupTable {
       size_t index, const seg_data_t &y0, const seg_data_t &y1);
 
     deviation_t computeSegmentError(
+      error_metric_t metric, WeightsTable *weights, const segment_t &seg);
+    deviation_t computeSegmentError(
       error_metric_t metric, WeightsTable *weights, uint32_t index);
  
     /** Computes the target function with a point in input space.

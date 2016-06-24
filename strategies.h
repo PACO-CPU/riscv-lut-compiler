@@ -40,7 +40,7 @@ namespace approx_strategy {
     handle_segment_t handle_segment;
 
     void execute(
-      LookupTable *lut, WeightsTable *weights, options_t &options) const;
+      LookupTable *lut, WeightsTable *weights, const options_t &options) const;
   };
 
   #define APPROX_STRATEGY(id,name) extern const record_t id;

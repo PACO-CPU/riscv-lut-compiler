@@ -1,4 +1,4 @@
 
-segmentBits = 4
-selectorBits = 3
+segmentBits = 3
+selectorBits = 4
 

@@ -3,6 +3,7 @@
 
 #include "error.h"
 #include "segment.h"
+#include "bounds.h"
 extern "C" {
 #include <lua.h>
 #include <lualib.h>
@@ -61,6 +62,11 @@ class WeightsTable : public alp::RCObject {
       * Creates a deep duplicate of the passed argument if not NULL
       */
     WeightsTable(WeightsTable *tbl=NULL);
+    
+    /** Constructor creating a weights table equaling 1 for all points 
+      * in the passed bounds object.
+      */
+    WeightsTable(const Bounds &bounds);
 
     virtual ~WeightsTable();
     
@@ -100,7 +106,7 @@ class WeightsTable : public alp::RCObject {
       * intersect.
       */
     void setZeroRange(const seg_data_t &start, const seg_data_t &end);
-    
+
     /** Returns the weight value at a specific point.
       * 
       * \param p Point to compute the weight at.

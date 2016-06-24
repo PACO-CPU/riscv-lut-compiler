@@ -1,0 +1,10 @@
+name "test1"
+domain 10  0
+segment 0 7 0 447
+segment 7 1 448 500
+segment 8 3 500 500
+segment 11 1 500 500
+segment 12 1 500 500
+segment 13 1 500 500
+segment 14 1 500 500
+segment 15 1 500 500

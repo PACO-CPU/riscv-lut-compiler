@@ -33,15 +33,23 @@ static void _handle_segment(
     sum_wxx+=w*x*x;
   }
   
-  double a=
-    (sum_wxy - sum_wy*sum_wx/sum_w) /
-    (sum_wxx - sum_wx*sum_wx/sum_w);
-  double b=
-    (sum_wy-a*sum_wx) / 
-    (sum_w);
-  
-  y0=(int64_t)b;
-  y1=(int64_t)(b+a*point_count-1);
+  if (!(sum_w>0)) {
+    y0=(int64_t)0;
+    y1=y0;
+  } else if (point_count<2) {
+    y0=(int64_t) (sum_wy/sum_w);
+    y1=y0;
+  } else {
+    double a=
+      (sum_wxy - sum_wy*sum_wx/sum_w) /
+      (sum_wxx - sum_wx*sum_wx/sum_w);
+    double b=
+      (sum_wy-a*sum_wx) / 
+      (sum_w);
+    
+    y0=(int64_t)b;
+    y1=(int64_t)(b+a*point_count-1);
+  }
 
 }
 #define TEST_FUNC(bounds,target,code) { \

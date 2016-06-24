@@ -74,9 +74,9 @@ static int _min_required_width(
   LookupTable *lut, const options_t &options, 
   uint32_t first, uint32_t last, uint32_t count) {
 
-  if (options.arch.segmentBits>options.arch.selectorBits) { 
+  if (options.arch.segmentBits<options.arch.selectorBits) { 
     // binary search looking for the minimum segment width.
-    uint32_t l=1,r=(1<<(options.arch.segmentBits-options.arch.selectorBits)),c;
+    uint32_t l=1,r=(1<<(options.arch.selectorBits-options.arch.segmentBits)),c;
     while(l<r) {
       c=(l+r)>>1;
 

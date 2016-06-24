@@ -1,6 +1,6 @@
 name = "test2"
 numSegments = 12
-bounds = "(4,7) (31,38)"
+bounds = "(4,7) (31,63)"
 segments = "uniform"
 approximation = "step"
 

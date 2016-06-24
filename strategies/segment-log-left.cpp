@@ -79,10 +79,6 @@ static uint32_t _subdivide(
   
   if (widths.len<1) return 0;
 
-  printf("widths: ");
-  for(size_t i=0;i<widths.len;i++) printf("%i ",widths[i]);
-  printf("\n");
-
   #define ADD_SEGMENT { \
     assert( \
       lut->addSegment(offset,widths[i],true) && \

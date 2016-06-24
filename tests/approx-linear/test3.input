@@ -1,8 +1,8 @@
-name = "test1"
+name = "test2"
 numSegments = 12
-bounds = "(0,31)"
+bounds = "(4,7) (31,38) (100,121) (140,141)"
 segments = "uniform"
-approximation = "step"
+approximation = "linear"
 
 %%
 

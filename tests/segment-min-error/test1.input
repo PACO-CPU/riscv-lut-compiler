@@ -1,7 +1,7 @@
 name = "test1"
 numSegments = 12
-bounds = "(0,31)"
-segments = "uniform"
+bounds = "(0,1023)"
+segments = "min-error"
 approximation = "interpolated"
 
 %%
@@ -12,7 +12,6 @@ target int -> int
 
 
 int target(int a) {
-  a=a%23;
-  if (a>17) a=17;
-  return a;
+  if (a<500) return a;
+  return 500;
 }

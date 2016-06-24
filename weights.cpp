@@ -10,9 +10,12 @@
 #include <math.h>
 
 #include <iostream>
+
 WeightsTable::WeightsTable(WeightsTable *tbl) :
   _isAllIntegers(true) {
   
+  _l=luaL_newstate();
+
   // creates the math library as a new table (and leaves it on the stack)
   luaL_requiref(_l,LUA_MATHLIBNAME,luaopen_math,1);
 
@@ -31,6 +34,40 @@ WeightsTable::WeightsTable(WeightsTable *tbl) :
     }
   }
 
+}
+
+WeightsTable::WeightsTable(const Bounds &bounds) :
+  _isAllIntegers(true) {
+  
+  _l=luaL_newstate();
+  
+  // creates the math library as a new table (and leaves it on the stack)
+  luaL_requiref(_l,LUA_MATHLIBNAME,luaopen_math,1);
+
+  // iterate through all members..
+  lua_pushnil(_l);
+  while(lua_next(_l,-2)!=0) {
+    lua_setglobal(_l,lua_tostring(_l,-2)); // and make them global
+  }
+  lua_pop(_l,1);
+
+  luaL_loadstring(_l,"return 1");
+  range_t range;
+  range.owner=this;
+  
+  for(size_t i=0;i<bounds.data().len;i++) {
+    range.start=bounds.data()[i].start;
+    range.end=bounds.data()[i].end;
+    lua_pushvalue(_l,-1);
+    range.lref=luaL_ref(_l,LUA_REGISTRYINDEX);
+    if (
+      _isAllIntegers && (
+        (range.start.kind!=seg_data_t::Integer) ||
+        (range.end.kind  !=seg_data_t::Integer))) 
+      _isAllIntegers=false;
+    _ranges.insert(range);
+  }
+  lua_pop(_l,1);
 }
 
 WeightsTable::~WeightsTable() {
@@ -196,7 +233,6 @@ seg_data_t WeightsTable::evaluate(const seg_data_t &p) {
 void WeightsTable::evaluate(const seg_data_t &p, seg_data_t &v) {
   ssize_t l,r,c;
   lua_Number lv;
-  
   for(l=0,r=(ssize_t)_ranges.len-1;l<=r;) {
     c=(l+r)/2;
     if (_ranges[c].contains(p)) {
@@ -212,6 +248,9 @@ void WeightsTable::evaluate(const seg_data_t &p, seg_data_t &v) {
       lua_setglobal(_l,"v");
       if (lua_pcall(_l,0,1,0)!=0) {
         // error: ignore and return 0
+        alp::logf(
+          "WARNING: lua error encountered while evaluating weights: %s\n",
+          alp::LOGT_WARNING,lua_tostring(_l,1));
         lua_pop(_l,0);
         break;
       }

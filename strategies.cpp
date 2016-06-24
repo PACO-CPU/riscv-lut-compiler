@@ -64,7 +64,7 @@ namespace segment_strategy {
         optimize(lut,weights,options,lut->num_primary_segments());
 
       } else if (subdivide!=NULL) {
-        subdivide(lut,weights,options,0,(1<<options.arch.segmentBits)-1,
+        subdivide(lut,weights,options,0,(1<<options.arch.selectorBits)-1,
           lut->num_primary_segments());
       } else 
         assert(0 && "segmentation strategy not implemented");
@@ -85,7 +85,7 @@ namespace approx_strategy {
   }
 
   void record_t::execute(
-    LookupTable *lut, WeightsTable *weights, options_t &options) const {
+    LookupTable *lut, WeightsTable *weights, const options_t &options) const {
 
     seg_data_t y0,y1;
 
