@@ -34,8 +34,8 @@ namespace approx_strategy {
   
   struct record_t {
     typedef void (*handle_segment_t) (
-      LookupTable *lut, WeightsTable *weights, options_t &options, 
-      size_t index);
+      LookupTable *lut, WeightsTable *weights, const options_t &options, 
+      const segment_t &seg, seg_data_t &y0, seg_data_t &y1);
     
     handle_segment_t handle_segment;
 

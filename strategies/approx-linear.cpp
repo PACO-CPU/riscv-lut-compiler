@@ -1,13 +1,9 @@
 #include "../strategies.h"
 
 static void _handle_segment(
-  LookupTable *lut, WeightsTable *weights, options_t &options,
-  size_t index
+  LookupTable *lut, WeightsTable *weights, const options_t &options,
+  const segment_t &seg, seg_data_t &y0, seg_data_t &y1
   ) {
-  
-  if (lut->segments().len<=index) return;
-
-  const segment_t &seg=lut->segments()[index];
   
   seg_data_t x_raw,y_raw,weight_raw;
   double 
@@ -21,8 +17,8 @@ static void _handle_segment(
 
   for(uint64_t x=0;x<point_count;x++) {
     double w=1,y;
-    lut->hardwareToInputSpace(index,x,x_raw);
-    lut->evaluate(index,x,y_raw);
+    lut->hardwareToInputSpace(seg,x,x_raw);
+    lut->evaluate(seg,x,y_raw);
     if (weights!=NULL) {
       weights->evaluate(x_raw,weight_raw);
       w=(double)weight_raw;
@@ -43,10 +39,9 @@ static void _handle_segment(
   double b=
     (sum_wy-a*sum_wx) / 
     (sum_w);
-
-  seg_data_t y0( (int64_t)b ), y1( (int64_t)(b+a*point_count-1) );
-
-  lut->setSegmentValues(index,y0,y1);
+  
+  y0=(int64_t)b;
+  y1=(int64_t)(b+a*point_count-1);
 
 }
 #define TEST_FUNC(bounds,target,code) { \
@@ -68,16 +63,16 @@ static void _handle_segment(
 }
 
 #define TEST_SEGMENT(idx,expected_y0,expected_y1) { \
-  _handle_segment(&lut,NULL,opts,idx); \
-  const segment_t &seg=lut.segments()[idx]; \
-  Assertf( seg.y0==seg_data_t(expected_y0), \
+  seg_data_t y0,y1; \
+  _handle_segment(&lut,NULL,opts,lut.segments()[idx],y0,y1); \
+  Assertf( y0==seg_data_t(expected_y0), \
     "Lower segment value (%g) differs from " \
     "expected value (%g) in segment %i\n", \
-    (double)seg.y0,(double)expected_y0,idx); \
-  Assertf( seg.y1==seg_data_t(expected_y1), \
+    (double)y0,(double)expected_y0,idx); \
+  Assertf( y1==seg_data_t(expected_y1), \
     "Upper segment value (%g) differs from " \
     "expected value (%g) in segment %i\n", \
-    (double)seg.y1,(double)expected_y1,idx); \
+    (double)y1,(double)expected_y1,idx); \
 }
 
 unittest( 

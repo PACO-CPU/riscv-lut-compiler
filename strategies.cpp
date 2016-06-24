@@ -87,8 +87,12 @@ namespace approx_strategy {
   void record_t::execute(
     LookupTable *lut, WeightsTable *weights, options_t &options) const {
 
-    for(size_t idx=0;idx<lut->segments().len;idx++)
-      handle_segment(lut,weights,options,idx);
+    seg_data_t y0,y1;
+
+    for(size_t idx=0;idx<lut->segments().len;idx++) {
+      handle_segment(lut,weights,options,lut->segments()[idx],y0,y1);
+      lut->setSegmentValues(idx,y0,y1);
+    }
   }
 
 } // namespace approx_strategy

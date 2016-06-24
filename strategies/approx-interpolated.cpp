@@ -1,16 +1,12 @@
 #include "../strategies.h"
 
 static void _handle_segment(
-  LookupTable *lut, WeightsTable *weights, options_t &options,
-  size_t index
+  LookupTable *lut, WeightsTable *weights, const options_t &options,
+  const segment_t &seg, seg_data_t &y0, seg_data_t &y1
   ) {
-
-  lut->setSegmentValues(
-    index,
-    lut->evaluate(index,0),
-    lut->evaluate(
-      index,
-      (lut->segments()[index].width<<lut->segment_interpolation_bits())));
+  
+  y0=lut->evaluate(seg,0);
+  y1=lut->evaluate(seg,(seg.width<<lut->segment_interpolation_bits()));
 }
 
 namespace approx_strategy {

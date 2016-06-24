@@ -277,6 +277,14 @@ class LookupTable {
 
     /** Convertes a coordinate from hardware space to input space.
       *
+      * \param seg Segment of the hardware coordinates.
+      * \param offset Interpolation bits.
+      * \param inp Result of the coordinate translation.
+      */
+    void hardwareToInputSpace(
+      const segment_t &seg, uint64_t offset, seg_data_t &inp);
+    /** Convertes a coordinate from hardware space to input space.
+      *
       * \param addr Index of the segment.
       * \param offset Interpolation bits.
       * \param inp Result of the coordinate translation.
@@ -350,6 +358,32 @@ class LookupTable {
       */
     seg_data_t evaluate(const seg_loc_t &arg);
 
+    /** Computes the target function in hardware space.
+      *
+      * Hardware space takes a segment index and a word made up of selector
+      * and interpolation bits as it would be seen by the HW core's 
+      * LUT multiply-add unit. The number of (least significant) bits used in 
+      * offset depends on the size of the segment space and can be retrieved by
+      * the interpolationBits method.
+      *
+      * \param seg Segment to use.
+      * \param offset Concatenation of selector and interpolation bits
+      */
+    void evaluate(const segment_t &seg, uint64_t offset, seg_data_t &res);
+
+    /** Computes the target function in hardware space.
+      *
+      * Hardware space takes a segment index and a word made up of selector
+      * and interpolation bits as it would be seen by the HW core's 
+      * LUT multiply-add unit. The number of (least significant) bits used in 
+      * offset depends on the size of the segment space and can be retrieved by
+      * the interpolationBits method.
+      *
+      * \param seg Segment to use.
+      * \param offset Concatenation of selector and interpolation bits
+      */
+
+    seg_data_t evaluate(const segment_t &seg, uint64_t offset);
     /** Computes the target function in hardware space.
       *
       * Hardware space takes a segment index and a word made up of selector
