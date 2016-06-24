@@ -38,9 +38,10 @@ struct candidate_t {
 };
 
 
-static void _optimize_main(
+static void _optimize(
   LookupTable *lut, WeightsTable *weights, 
-  const options_t &options, uint32_t max_count) {
+  const options_t &options, uint32_t max_count,
+  bool use_gain) {
 
   if (lut->segments().len==max_count) return;
   
@@ -119,11 +120,21 @@ static void _optimize_main(
         error_square,curWeights,new_candidate.segment1);
 
       curWeights->drop();
-      if (
-        (best_candidate.index<0) || 
-        (best_candidate.error1>new_candidate.error1))
-        best_candidate=new_candidate;
 
+      if (new_candidate.error1>new_candidate.error0) continue;
+      
+      bool better=best_candidate.index<0;
+      
+      if (use_gain) {
+        better|= 
+          (best_candidate.error0.mean/best_candidate.error1.mean) <
+          (new_candidate.error0.mean/new_candidate.error1.mean);
+      } else {
+        better|=
+          (best_candidate.error1>new_candidate.error1);
+      }
+      if (better) 
+        best_candidate=new_candidate;
       
     }
     
@@ -176,11 +187,27 @@ static void _optimize_main(
           lut->computeSegmentError(
             error_square,weights,new_candidate.segment2);
 
-        if (
-          (best_candidate.index<0) || 
-          ( 
-            (best_candidate.error1+best_candidate.error2)>
-            (new_candidate.error1+new_candidate.error2)))
+
+        if (new_candidate.error1+new_candidate.error2>new_candidate.error0) 
+          continue;
+        
+        bool better=best_candidate.index<0;
+        
+        if (use_gain) {
+          better|= 
+            (
+              best_candidate.error0.mean/
+              (best_candidate.error1.mean+best_candidate.error2.mean)) <
+            (
+              new_candidate.error0.mean/
+              (new_candidate.error1.mean+new_candidate.error2.mean));
+        } else {
+          better|=
+            (
+              (best_candidate.error1+best_candidate.error1)>
+              (new_candidate.error1+new_candidate.error2));
+        }
+        if (better) 
           best_candidate=new_candidate;
       }
     }
@@ -209,10 +236,24 @@ static void _optimize_main(
   return;
 }
 
+static void _optimize_normal(
+  LookupTable *lut, WeightsTable *weights, 
+  const options_t &options, uint32_t max_count) {
+  _optimize(lut,weights,options,max_count,false);
+}
+static void _optimize_gain(
+  LookupTable *lut, WeightsTable *weights, 
+  const options_t &options, uint32_t max_count) {
+  _optimize(lut,weights,options,max_count,true);
+}
 namespace segment_strategy {
   const record_t MIN_ERROR {
     .subdivide=NULL, // gcc (6.1.1) cannot deal with this being omitted.
-    .optimize=_optimize_main
+    .optimize=_optimize_normal
+  };
+  const record_t MIN_ERROR_GAIN {
+    .subdivide=NULL, // gcc (6.1.1) cannot deal with this being omitted.
+    .optimize=_optimize_gain
   };
 
 };
