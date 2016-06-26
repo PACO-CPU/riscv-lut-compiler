@@ -31,8 +31,16 @@ class Bounds {
     /** Getter for the sorted list of disjoint intervals making up this
       * set of bounds. */
     const alp::array_t<interval_t> &data() const { return _data; }
-
+    
+    /** Adds an interval to the bounds.
+      *
+      * This will shrink all intervals that overlap with the new one,
+      * potentially deleting intervals that are covered completely.
+      */
     void addInterval(interval_t ival);
+
+    /** Removes all intervals, making this object represent the empty set.
+      */
     void clear() { _data.clear(); }
 
     /** Returns true iff this bounds objects contains no points.
@@ -52,6 +60,12 @@ class Bounds {
       return _data[_data.len-1].end;
     }
     
+    /** Returns true iff the given interval intersects with this one.
+      *
+      * An intersection occurs if there is such a pair (a,b) of intervals,
+      * with a from us and b from ival so that at least one point of a and b
+      * are the same.
+      */
     bool intersectsWith(const interval_t &ival) const;
 
     /** Parses a string expected to be of format:

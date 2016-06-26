@@ -119,14 +119,32 @@ class LookupTable {
     approx_strategy::id_t approximation_strategy() const { 
       return _approximation_strategy; 
     }
+    /** Returns the file name of a weights file to be used in conjunction
+      * with this lut if specified by a key-value during input parsing.
+      */
     const alp::string &fn_weights() const { return _fn_weights; }
-    const Bounds &bounds() { return _bounds; }
 
+    /** Returns a constant view into our domain as represented by our
+      * bounds instance.*/
+    const Bounds &bounds() { return _bounds; }
+    
+    /** Returns the segment space offset, being the first value to be 
+      * covered by our domain.
+      */
     const seg_data_t &segment_space_offset() const { 
       return _segment_space_offset; 
     }
+    /** Returns the width of the segment space as the exponent of that 
+      * power-of-two value.
+      */
     int segment_space_width() const { return _segment_space_width; }
-
+    
+    /** Returns the number of bits fed into the interpolation logic.
+      *
+      * Although this number is specified by arch_config_t::interpolationBits,
+      * it may actually be lower than that if the domain is so small that there
+      * are no more bits.
+      */
     int segment_interpolation_bits() const {
       int res=_segment_space_width-_arch.selectorBits;
       if (res>_arch.interpolationBits) {
@@ -291,6 +309,8 @@ class LookupTable {
       */
     void hardwareToInputSpace(size_t addr, uint64_t offset, seg_data_t &inp);
     
+    /** Returns a constant view into the segments registered.
+      */
     const alp::array_t<segment_t> &segments() const { return _segments; }
     /** Adds a new segment into the LUT.
       *
@@ -337,11 +357,32 @@ class LookupTable {
     void clearSegments() {
       _segments.clear();
     }
+    /** Alters an indexed segment by setting the values it should attain at
+      * the lower and upper boundaries.
+      *
+      * \param index Index of the segment.
+      * \param y0 Value to attain at the lower boundary.
+      * \param y1 Value to attain at the upper boundary.
+      */
     void setSegmentValues(
       size_t index, const seg_data_t &y0, const seg_data_t &y1);
-
+    
+    /** Computes the mean error resulting from approximating a specific 
+      * segment.
+      *
+      * For this, a user-specified error metric is used.
+      * \param metric Error metric to be used. See deviation.h for a list
+      * of built-in error metrics.
+      * \param weights Optional weights table to use for weighting the
+      * importance of values.
+      * \param seg Segment to compute the error for. This does not need to
+      * be one of the segments registered in the LUT.
+      */
     deviation_t computeSegmentError(
       error_metric_t metric, WeightsTable *weights, const segment_t &seg);
+    /** Wrapper for computeSegmentError accepting a segment index into the
+      * list of segments registered in the LUT instead of a segment itself.
+      */
     deviation_t computeSegmentError(
       error_metric_t metric, WeightsTable *weights, uint32_t index);
  

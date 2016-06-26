@@ -1,3 +1,7 @@
+/** \file deviations.h
+  * \brief Defines metrics for computing errors in approximation.
+  */
+
 #ifndef RISCV_LUT_COMPULER_DEVIATION_H
 #define RISCV_LUT_COMPULER_DEVIATION_H
 
@@ -10,6 +14,11 @@
 
 #include <alpha/alpha.h>
 
+/** Structure representing the mean deviation in a set of samples.
+  *
+  * Stores both the (weighted) mean and the accumulated weight / count of
+  * data points so that multiple instances can be combined arithmetically.
+  */
 struct deviation_t {
   double mean;
   double weight;

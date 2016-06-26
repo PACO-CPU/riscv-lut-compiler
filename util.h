@@ -6,7 +6,9 @@
 #include <streambuf>
 #include <string>
 #include <alpha/alpha.h>
-
+/** Helper struct for mapping char buffers onto c++ streams as expected by
+  * flex-generated scanners.
+  */
 struct membuf_read_t : std::basic_streambuf<char>
 {
     membuf_read_t(const char* begin, size_t cb) {
@@ -14,6 +16,11 @@ struct membuf_read_t : std::basic_streambuf<char>
     }
 };
 
+/** Helper class for managing temporary directories.
+  *
+  * By simply creating and destroying objects of this class a new temporary
+  * directory can be created and deleted (recursively).
+  */
 class TempDir {
   protected:
     alp::string _path;

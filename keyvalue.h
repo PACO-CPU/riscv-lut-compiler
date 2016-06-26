@@ -3,7 +3,11 @@
 #include "segment.h"
 #include <alpha/alpha.h>
 
-/** Represents a single key-value.
+/** Represents a single key-value as read by input files and stored in a
+  * LookupTable instance.
+  *
+  * Instances of this class are considered immutable, thus neither key nor
+  * value can be changed outside of the constructor.
   */
 class KeyValue {
   public:

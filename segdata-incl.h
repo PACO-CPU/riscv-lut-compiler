@@ -1,7 +1,11 @@
 #include <assert.h>
 #include <stdlib.h>
 
-/** Data type to be used for segment boundaries and values.*/
+/** Data type to be used for segment boundaries and values.
+  *
+  * This is a vartype of integer and floating-points to cover all the possible
+  * signatures of a target function and the corresponding domain/codomain.
+  */
 struct seg_data_t {
   enum kind_t {
     Integer,

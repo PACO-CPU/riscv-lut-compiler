@@ -1,3 +1,7 @@
+/** \file strategy-def.h
+  * \brief Defines numeric constants for each segmentation and approximation
+  * strategy in the order as they appear in strategy-decl.h
+  */
 #ifndef RISCV_LUT_COMPILER_STRATEGY_DEF_H
 #define RISCV_LUT_COMPILER_STRATEGY_DEF_H
 

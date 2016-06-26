@@ -1,3 +1,12 @@
+/** \file error.h
+  * \brief Defines all exception classes for use in error handling in the
+  * lut compiler tool.
+  *
+  * Exceptions are to be used in all error handling that occurs out of the
+  * possibility of user and/or environmental inputs or changes.
+  * Program-flow related invariants that are independent of both must be 
+  * handled with assert instructions.
+  */
 #ifndef RISCV_LUT_COMPILER_ERROR_H
 #define RISCV_LUT_COMPILER_ERROR_H
 #include "lexer-common.h"

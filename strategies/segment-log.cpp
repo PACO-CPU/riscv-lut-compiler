@@ -112,7 +112,7 @@ static uint32_t _subdivide_right(
 
 
 namespace segment_strategy {
-  const record_t LOG_LEFT {
+  const record_t LOG_LEFT{
     .subdivide=_subdivide_left
   };
   const record_t LOG_RIGHT {

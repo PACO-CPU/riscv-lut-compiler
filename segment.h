@@ -3,6 +3,11 @@
 
 #include "segdata.h"
 
+/** Specifies a single coordinate in segment space.
+  *
+  * This is just a convenience data type so that only one variable needs to
+  * be passed instead of two.
+  */
 struct seg_loc_t {
   uint32_t segment;
   double offset;

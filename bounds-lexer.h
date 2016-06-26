@@ -10,9 +10,17 @@
 #include "strategy-def.h"
 #include <alpha/alpha.h>
 
+/** Scanner for domain specification intervals.
+  *
+  * This is a wrapper for the flex-generated BaseBoundsFlexLexer, adding
+  * token kinds, attributes and source locations as well as a wrapper
+  * constructor for creating a scanner from a char pointer.
+  */
 class BoundsFlexLexer : 
   public BaseBoundsFlexLexer, public SourceLocationLexer {
   public:
+    /** Token kind enumeration
+      */
     enum {
       TOK_INVALID=1,
       TOK_LPAREN,
@@ -24,8 +32,6 @@ class BoundsFlexLexer :
       TOK_SEGMENT_STRATEGY,
       TOK_APPROX_STRATEGY,
      
-
-
     };
   protected:
     /** Current source location of the scanner.
@@ -34,19 +40,25 @@ class BoundsFlexLexer :
     /** Source location of the beginning of the currently displayed token */
     source_location_t _loc_last;
     int _kind;
-
+    
+    /** Numeric attribute data. */
     seg_data_t _numAttr;
+    /** String-typed attribute data. */
     alp::string _strAttr;
-    segment_strategy::id_t _segmentStrategyAttr;
-    approx_strategy::id_t _approxStrategyAttr;
-
+    
+    /** Raw code as specified with the constructor. */
     const char *_code;
+    /** Length, in bytes, of the source code we are scanning.*/
     size_t      _cb_code;
+    /** Identifying name of the source code block we are scanning.*/
     const char *_name;
 
     membuf_read_t *_in_buf;
     std::istream *_in_stream;
-
+    
+    /** Protected constructor. This is needed to ensure integrity of data
+      * generated in the wrapper New.
+      */
     BoundsFlexLexer( 
       membuf_read_t *in_buf, std::istream *in_stream, 
       const char *code, size_t cb, const char *name) :
@@ -65,7 +77,9 @@ class BoundsFlexLexer :
       delete _in_stream;
       delete _in_buf;
     }
-
+    
+    /** Wrapper for the constructor, accepting a raw character buffer as input
+      */
     static BoundsFlexLexer *New(
       const char *ptr, size_t cb, const char *name) {
       membuf_read_t *in_buf=new membuf_read_t(ptr,cb);
@@ -75,18 +89,19 @@ class BoundsFlexLexer :
       return lex;
     }
     
+    /** Performs a single scanning step, returning on EOF or when a new 
+      * token was scanned.
+      *
+      * \return The token kind as described in the enum above.
+      */
     virtual int yylex();
-
+    
+    /** Returns the token kind emitted by the last call to yylex. */
     int kind() const { return _kind; }
 
     const seg_data_t &numAttr() { return _numAttr; }
     const alp::string &strAttr() { return _strAttr; }
-    segment_strategy::id_t segmentStrategyAttr() const { 
-      return _segmentStrategyAttr;
-    }
-    approx_strategy::id_t approxStrategyAttr() const {
-      return _approxStrategyAttr;
-    }
+
     virtual const source_location_t &loc() { return _loc_last; }
     const source_location_t &loc_cur() { return _loc; }
     virtual const char *ptr() { return _code; };

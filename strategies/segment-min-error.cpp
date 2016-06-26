@@ -249,11 +249,13 @@ static void _optimize_gain(
 namespace segment_strategy {
   const record_t MIN_ERROR {
     .subdivide=NULL, // gcc (6.1.1) cannot deal with this being omitted.
-    .optimize=_optimize_normal
+    .optimize=_optimize_normal,
+    .handlesApproximation=true
   };
   const record_t MIN_ERROR_GAIN {
     .subdivide=NULL, // gcc (6.1.1) cannot deal with this being omitted.
-    .optimize=_optimize_gain
+    .optimize=_optimize_gain,
+    .handlesApproximation=true
   };
 
 };

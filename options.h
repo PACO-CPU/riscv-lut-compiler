@@ -8,6 +8,18 @@
 #define ENV_CMD_SO "RISCV_LUT_COMPILER_CMD_SO"
 #define ENV_CMD_TARGET_O "RISCV_LUT_COMPILER_CMD_TARGET_O"
 
+/** Structure defining per-invocation options, specified via the command line
+  * and holding an arch_config_t potentially loaded as a result of command-line
+  * options.
+  *
+  * Offers a method parseCommandLine to make sense of a command-line as 
+  * passed to the program's invocation.
+  *
+  * To use the information in this structure for generating output files,
+  * the computeOutputName method must be invoked first. This is done to allow
+  * for overriding the output name based on other information, such as 
+  * key-values read from a lut input file.
+  */
 struct options_t {
   enum {
     Default_maxWeightSteps = 1000,
@@ -39,7 +51,12 @@ struct options_t {
   alp::string cmdCompileTargetO;
 
   arch_config_t arch;
-
+  
+  /** Virtual file system for locating weights files.
+    *
+    * Weights files may be specified relative to the LUT input file location
+    * which does not have to be the working directory.
+    */
   VFS vfsWeights;
 
   options_t(); 
@@ -66,7 +83,13 @@ struct options_t {
     * \throw CommandLineError The command line is invalid.
     */
   int parseCommandLine(int argn, const char **argv);
-
+  
+  /** Computes the name of the program run's output file depending on
+    * input names and process options.
+    *
+    * Generates a ```.dat``` file name for weight file tests, ```.lut``` for
+    * intermediate files, ```.c``` for c-code files and ```.o``` for ELF files.
+    */
   void computeOutputName();
 
 };

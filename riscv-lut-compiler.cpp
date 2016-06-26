@@ -1,3 +1,6 @@
+/** \file riscv-lut-compiler.cpp
+  * \brief Main routine for the LUT compiler tool.
+  */
 #include "weights.h"
 #include "lut.h"
 #include "segment.h"
@@ -7,10 +10,13 @@
 #include "strategies.h"
 #include <alpha/alpha.h>
 
+// forward declarations for better overview
 static int run_weights_test(options_t &options);
+static int run_lut_compilation(options_t &options);
 int main(int argn, char **argv);
 
-
+/** Main toolflow for running a weights test
+  */
 static int run_weights_test(options_t &options) {
   WeightsTable *tbl=new WeightsTable();
   tbl->grab();
@@ -83,10 +89,14 @@ static int run_weights_test(options_t &options) {
 
 }
 
-
+/** Main toolflow for running LUT compilation
+  */
 static int run_lut_compilation(options_t &options) {
   LookupTable *lut=new LookupTable(options.arch);
   WeightsTable *weights=NULL;
+  bool forgo_approximation=false;
+
+  // handle input files (intermediate / input)
   try {
     if (options.fInputIntermediate) {
       lut->parseIntermediateFile(options.fnInput.ptr);
@@ -110,7 +120,10 @@ static int run_lut_compilation(options_t &options) {
     return 1;
     
   }
-
+  
+  // load a weights table if specified
+  // first try to locate it with the VFS in our options_t and then
+  // load it 
   if (lut->fn_weights().len>0) {
     try {
       alp::string fn=options.vfsWeights.locate(lut->fn_weights());
@@ -137,7 +150,9 @@ static int run_lut_compilation(options_t &options) {
       return 1;
     }
   }
-
+  
+  // run segmentation and approximation if we read an input file (not 
+  // intermediate)
   if (!options.fInputIntermediate) {
     try {
       
@@ -156,6 +171,8 @@ static int run_lut_compilation(options_t &options) {
       } else {
         // only perform segmentation strategies if they are actually needed,
         // i.e. we have more 
+
+        // primary segmentation
         lut->clearSegments();
 
         if (lut->strategy1()!=segment_strategy::INVALID) {
@@ -171,12 +188,15 @@ static int run_lut_compilation(options_t &options) {
             "No segmentation method (strategy / explicit segments) specified");
         }
 
+        // secondary segmentation (if desired)
         if (lut->strategy2()!=segment_strategy::INVALID) {
           segment_strategy::get(lut->strategy2())->execute(lut,weights,options);
         }
       }
-
-      if (lut->approximation_strategy()!=approx_strategy::INVALID) {
+      
+      // approximation (if not handled before as part of segmentation)
+      if (forgo_approximation) {
+      } else if (lut->approximation_strategy()!=approx_strategy::INVALID) {
         approx_strategy::get(lut->approximation_strategy())->execute(
           lut,weights,options);
       } else if (!options.fOutputIntermediate) {
@@ -296,6 +316,11 @@ static int run_lut_compilation(options_t &options) {
   return 0;
 }
 
+/** Main entry point.
+  *
+  * Performs command-line argument parsing and calls the appropriate 
+  * toolflow (see above)
+  */
 int main(int argn, char **argv) {
   options_t options;
 
