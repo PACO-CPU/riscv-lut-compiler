@@ -23,6 +23,7 @@ struct arch_config_t {
     *
     * A LUT hardware core generally has a power of two number of segments.
     * This power is represented in segmentBits.
+    * I.e. 2^segmentBits = number of offset/slope pairs in LUT RAM
     */
   int segmentBits;
 

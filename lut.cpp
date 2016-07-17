@@ -914,8 +914,178 @@ seg_data_t LookupTable::evaluate(size_t addr, uint64_t offset) {
   return res;
 }
 
+void LookupTable::create_interconnect( segment_t* subseg, int* current_interconnect){
+  /**
+    * Recursively generate interconnect configuration for the PLA,
+    * subdividing a segment until a minimal unique covering of
+    * the (sub-)segment for the selectionBits has been reached.
+    * Add interconnect configuration to and_plane_conf and
+    * or_plane_conf.
+    */
+
+//    for( int selectorBit = 0; selectorBit < _arch.selectorBits; selectorBit++){
+      // TODO identify subsegments, encode, increment current_interconnect
+	  // see what changes from one boundary to the other -- how?
+	  //   _arch.selectorBits; // int
+	  // are used for selection. (Is this correct? in some cases leading changes
+	  // may be better ignored, see arch-config segmentBits)
+	  // Retrieve segment data from internal representation
+	  // base data is in alp::array_t<segment_t> _segments
+	  // each segment has prefix, width, y0 and y1
+//      assert(current_interconnect < _arch.plaInterconnects &&
+//             "translate: Minterms > plaInterconnects");
+      // _segments[i].prefix, _segments[i].width
+      // straight inputs
+//      and_plane_conf[current_interconnect*2*_arch.selectorBits+selectorBit] = true;
+      // inverted inputs
+//      and_plane_conf[(current_interconnect*2+1)*_arch.selectorBits+selectorBit] = true;
+
+  /* todo: implement creation of PLA bitstream
+         - encode in bit pattern (don't forget don't-cares)
+
+       unresolved:
+         - what if some segments have the same offsets/inclinations
+           (extreme example: functions periodic with some power of two)
+           -> handle before translation?
+   */
+//    }
+}
+
+void LookupTable::print_translation_parameters(){
+  // num of the PLA inputs (inverted not included)
+  printf("selectorBits: %i\n", _arch.selectorBits);
+  // number of wires between AND and OR plane of the PLA
+  printf("_arch.plaInterconnects: %i\n", _arch.plaInterconnects );
+  // width of the PLA output
+  printf(
+    "_arch.segmentBits: %i (2^segmentBits: # of possible different MAu inputs)\n",
+    _arch.segmentBits);
+  // assert that number of segments does not exceed log2(segmentBits),
+  // meaning the number of LUT memory slots is sufficient
+  assert( (_segments.len >> _arch.segmentBits) == 0 &&
+          "translate: #of segments exceeds LUT memory slots");
+  // number of input bits that the LUT multiply/add unit (MAu) uses by design
+  printf("interpolationBits: %i\n", _arch.interpolationBits);
+  // number of input bits that will used in this configuration (<= previous)
+  printf("segment_interpolation_bits: %i\n", segment_interpolation_bits());
+  // no idea!
+  printf("_num_segments: %i\n", _num_segments);
+  // no idea!
+  printf("_num_primary_segments: %i\n", _num_primary_segments);
+  // offset of the beginning of the first segment from input space, integer
+  printf("_segment_space_offset: %li\n", _segment_space_offset.data_i );
+  // log2 of the width of the input domain
+  printf("_segment_space_width: %i\n", _segment_space_width );
+}
+
 void LookupTable::translate() {
-  // todo: implement 
-    fprintf(
-      stdout,"TRANSLATION REACHED\n");
+  /** 
+    * The translation function translates an arithmetical specification
+    * of segments delivered by the compiler frontend into binary bitstreams
+    * that can be transferred to the LUT hardware in the pipeline via DMA.
+    * There, these bitstreams define the behaviour of the address translation
+    * PLA and provide output values for each segment either directly or via
+    * the LUT units inbuilt Multiply-Add unit.
+    */
+
+  // do a sanity check on the LUT description
+  assert( _segments.len > 0 && "translate: #of segments not larger than 0");
+  
+  //print_translation_parameters();
+
+  // Variables of interest during translation
+  const int REG_WIDTH = 32;
+
+  // Allocate char arrays to hold config information.
+  // And plane of the PLA; *2: for inverted inputs
+  and_plane_conf = new char[_arch.plaInterconnects*2*_arch.selectorBits];
+  // Or plane of the PLA
+  or_plane_conf = new char[_arch.plaInterconnects*_arch.segmentBits];
+  // Connection plane connecting suitable input lines to the PLA
+  connection_plane_conf = new char[REG_WIDTH*_arch.selectorBits];
+  // Array of LUT outputs used as factors in the Multiply-Add unit
+  factor_output = new seg_data_t[1<<_arch.segmentBits];
+  // Array of LUT outputs used as offsets in the Multiply-Add unit
+  offset_output = new seg_data_t[1<<_arch.segmentBits];
+  // TODO: for now, only linear interpolation, no steps
+  use_multiply_add = true;
+
+
+  /* Calculate LUT decoder configuration
+     - calculate *which* bits of the input are used for selection and
+       interpolation.
+     - calculate MinTerms for And plane of PLA
+     - Or plane: naive addresses for now
+   */
+  // 1. connection plane
+  // Which LUT input bits are used for segment selection?
+  // Counting from LSBs:
+  //   (_segment_space_width-_arch.selectorBits) to _segment_space_width
+  int select_LSB = _segment_space_width - _arch.selectorBits;
+  int select_MSB = _segment_space_width;
+  printf("selLSB: %i, selMSB: %i\n", select_LSB, select_MSB);
+  // Connect selectorBits to PLA via connection plane
+  for( int selectorBit = 0; selectorBit<_arch.selectorBits; selectorBit++){
+    for( int registerBit = 0; registerBit<REG_WIDTH; registerBit++){
+      if( select_LSB <= registerBit
+          && registerBit < select_MSB  
+          && registerBit - select_LSB == selectorBit){ // connection
+        printf("connected: regbit: %i, selbit: %i\n", registerBit, selectorBit);
+        connection_plane_conf[registerBit*_arch.selectorBits+selectorBit] = true;
+      }else{ // no connection
+        connection_plane_conf[registerBit*_arch.selectorBits+selectorBit] = false;
+        //connection_plane_conf[registerBit][selectorBit] = false;
+      }
+    }
+  }
+  // TODO: create unit that selects interpolation bits for MAu use, similar to above
+
+  // 2. PLA -- MinTerms and naive addresses
+  int current_interconnect = 0;
+  for( size_t i = 0; i < _segments.len; i++){
+    qmc_pla_gen( &current_interconnect, &_segments[i], and_plane_conf,
+                 or_plane_conf, _arch.selectorBits, _arch.segmentBits);
+  }
+ 
+  switch( _segments[0].y0.kind) {
+    case seg_data_t::Integer:
+      for( size_t i=0; i<_segments.len; i++) {
+        printf( "Prefix: %u Width: %u\n", _segments[i].prefix, _segments[i].width);
+        printf( "y0: %li, y1: %li\n", _segments[i].y0.data_i, _segments[i].y1.data_i);
+      }
+      break;
+    case seg_data_t::Double:
+        // todo: handle FP
+        assert(0 && "Floating-Point translation not implemented");
+      break;
+  }
+
+  // Encode to alp::array_t<unsigned char> _config_bits
+  /* TODO: Encode for Shift Registers in order:
+       - shifter
+       - interpolation bit connection plane
+       - comparator (one line only)
+       - connection plane
+       - OR plane of PLA
+       - AND plane of PLA, first normal input, then inverted
+   */
+  // Shifter
+  // interpolation bit connection plane
+  // comparator (one line only)
+  // connection plane
+  // OR plane of PLA
+  // AND plane of PLA, first all the normal input, then inverted
+
+  /* TODO: encode LUT outputs (for the RAM)
+       subtasks:
+         - determine RAM format
+           (RAM values are written first, then other config data)
+         - calculate offset and incline depending on the number
+           of interpolationBits
+   */
+  // Encode slope and offset to RAM
+  for( size_t i=1; i<_segments.len; i++) {
+    //slope: _segments[i].y1 - _segments[i].y0
+    //offset: _segments[i].y0
+  }
 }

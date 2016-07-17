@@ -13,6 +13,7 @@
 #include "strategy-def.h"
 #include "weights.h"
 #include "deviation.h"
+#include "qmc.h"
 
 #include <alpha/alpha.h>
 
@@ -84,6 +85,14 @@ class LookupTable {
     int _segment_space_width;
 
     alp::array_t<segment_t> _segments;
+
+    // generated LUT configuration held in arrays
+    char* and_plane_conf;
+    char* or_plane_conf;
+    char* connection_plane_conf;
+    seg_data_t* factor_output;
+    seg_data_t* offset_output;
+    bool use_multiply_add;
     
     /** LUT configuration bitstream
       */
@@ -380,8 +389,16 @@ class LookupTable {
       * bitstream.
       */
     void translate();
+    void print_translation_parameters();
 
-
+protected:
+    /** Helper function to translate() a single segment for the PLA.
+      * It determines if a segment can be uniquely represented in
+      * a minimal selectionBits vector, if not it adds an interconnect
+      * for the first subsegment that can be and calls itself with
+      * the rest of the segment.
+      */
+    void create_interconnect( segment_t* subseg, int* current_interconnect);
 };
 
 #endif
