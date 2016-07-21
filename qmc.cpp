@@ -278,17 +278,20 @@ void write_interconnect(unsigned n, unsigned d, int* current_interconnect,
   int count = 0;
   unsigned bits[arch_selectorBits];
 
+  // transfer Minterm from n (containing 1 or 0),
+  // and d (containing don't-cares) into
+  // containing an field for each bit.
   while(count<arch_selectorBits) {
-    if(!(d%2))
-      bits[count] = n%2;
+    if(!(d%2)) // if last bit don't-care not set:
+      bits[count] = n%2; //last bit 1 or 0
     else
-      bits[count] = 2;
+      bits[count] = 2; //don't-care encoded as 2
 
-    n >>= 1;
-    d >>= 1;
+    n >>= 1; //remove last bit from binary input
+    d >>= 1; //remove last bit from don't-care input
     count++;
   }
-  // config and plane for one interconnect
+  // config and-plane for one interconnect
   // normal, then inverted selector lines
   for(int i=0;i<count;i++){
     cout << "and-normal-index: " << *current_interconnect*2*arch_selectorBits+i;
@@ -304,7 +307,7 @@ void write_interconnect(unsigned n, unsigned d, int* current_interconnect,
       and_plane_conf[(*current_interconnect*2+1)*arch_selectorBits+i]=false;
     }
   }
-  // config or plane for that same interconnect
+  // config or-plane for that same interconnect
   int tmp_ci = *current_interconnect;
   cout << "and plane written, current_interconnect: " << tmp_ci << endl;
   for(int i=0;i<arch_segmentBits;i++) {
