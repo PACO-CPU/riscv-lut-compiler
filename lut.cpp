@@ -914,43 +914,6 @@ seg_data_t LookupTable::evaluate(size_t addr, uint64_t offset) {
   return res;
 }
 
-void LookupTable::create_interconnect( segment_t* subseg, int* current_interconnect){
-  /**
-    * Recursively generate interconnect configuration for the PLA,
-    * subdividing a segment until a minimal unique covering of
-    * the (sub-)segment for the selectionBits has been reached.
-    * Add interconnect configuration to and_plane_conf and
-    * or_plane_conf.
-    */
-
-//    for( int selectorBit = 0; selectorBit < _arch.selectorBits; selectorBit++){
-      // TODO identify subsegments, encode, increment current_interconnect
-	  // see what changes from one boundary to the other -- how?
-	  //   _arch.selectorBits; // int
-	  // are used for selection. (Is this correct? in some cases leading changes
-	  // may be better ignored, see arch-config segmentBits)
-	  // Retrieve segment data from internal representation
-	  // base data is in alp::array_t<segment_t> _segments
-	  // each segment has prefix, width, y0 and y1
-//      assert(current_interconnect < _arch.plaInterconnects &&
-//             "translate: Minterms > plaInterconnects");
-      // _segments[i].prefix, _segments[i].width
-      // straight inputs
-//      and_plane_conf[current_interconnect*2*_arch.selectorBits+selectorBit] = true;
-      // inverted inputs
-//      and_plane_conf[(current_interconnect*2+1)*_arch.selectorBits+selectorBit] = true;
-
-  /* todo: implement creation of PLA bitstream
-         - encode in bit pattern (don't forget don't-cares)
-
-       unresolved:
-         - what if some segments have the same offsets/inclinations
-           (extreme example: functions periodic with some power of two)
-           -> handle before translation?
-   */
-//    }
-}
-
 void LookupTable::print_translation_parameters(){
   // num of the PLA inputs (inverted not included)
   printf("selectorBits: %i\n", _arch.selectorBits);
