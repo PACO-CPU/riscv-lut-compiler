@@ -1,6 +1,6 @@
 name = "test1"
 numSegments = 12
-bounds = "(0,1023)"
+bounds = "(524289,1048576)"
 segments = "uniform"
 approximation = "interpolated"
 
@@ -12,5 +12,5 @@ target int -> int
 
 
 int target(int a) {
-  return 0;
+  return a;
 }

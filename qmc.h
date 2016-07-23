@@ -11,8 +11,8 @@ struct B_number{
 
 
 //----------------------------------------------------------
-void qmc_pla_gen( int* current_interconnect, segment_t* subseg,
-                  char* and_plane_conf, char* or_plane_conf,
+void qmc_pla_gen( int* current_interconnect, int current_segment, 
+                  segment_t* subseg, char* and_plane_conf, char* or_plane_conf,
                   int arch_selectorBits, int arch_segmentBits); //gen PLA conf
 unsigned count_1s(unsigned number); //count the number of 1s in a number
 void print_binary(unsigned number);//print the number in binary
@@ -27,12 +27,13 @@ void print_final_group();               //print final table with -'s and unused 
 bool is_printed(B_number n);            //dont print terms that were already printed
 bool is_written(B_number n);
 void write_interconnect(unsigned n, unsigned d, int* current_interconnect,
-                        char* and_plane_conf, char* or_plane_conf,
-                        int arch_selectorBits, int arch_segmentBits);
-void write_pla_config( int* current_interconnect, //write pla config
+                        int current_segment, char* and_plane_conf,
+                        char* or_plane_conf, int arch_selectorBits, 
+                        int arch_segmentBits);
+void write_pla_config( int* current_interconnect, int current_segment, //write pla config
                        char* and_plane_conf, char* or_plane_conf,
                        int arch_selectorBits, int arch_segmentBits);
-void init( int* current_interconnect,  //start the table making and printing
+void init( int* current_interconnect, int current_segment, //start the table making and printing
                        char* and_plane_conf, char* or_plane_conf,
                        int arch_selectorBits, int arch_segmentBits);
 void getinput( segment_t* segment);     //get input from segment
