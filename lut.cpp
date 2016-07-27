@@ -984,7 +984,7 @@ void LookupTable::translate() {
   // do a sanity check on the LUT description
   assert( _segments.len > 0 && "translate: #of segments not larger than 0");
   
-  print_translation_parameters();
+  //print_translation_parameters();
 
   // Variables of interest during translation
   const int REG_WIDTH = 64;
@@ -1019,8 +1019,8 @@ void LookupTable::translate() {
   //   is reached.
   int interpolate_LSB = _segment_space_width - _arch.interpolationBits;
   int interpolate_MSB = _segment_space_width;
-  printf("interpolateLSB: %i, interpolateMSB: %i\n",
-         interpolate_LSB, interpolate_MSB);
+  //printf("interpolateLSB: %i, interpolateMSB: %i\n",
+  //       interpolate_LSB, interpolate_MSB);
   // Connect selectorBits to PLA via connection plane
   for( int interpolateBit = 0; interpolateBit<_arch.interpolationBits; 
        interpolateBit++){
@@ -1028,8 +1028,8 @@ void LookupTable::translate() {
       if( interpolate_LSB <= registerBit
           && registerBit < interpolate_MSB  
           && registerBit - interpolate_LSB == interpolateBit){ // connection
-        printf("connected: regbit: %i, interpolatebit: %i\n",
-                registerBit, interpolateBit);
+        //printf("connected: regbit: %i, interpolatebit: %i\n",
+        //        registerBit, interpolateBit);
         connection_plane_conf[interpolateBit*REG_WIDTH*3+registerBit] = true;
       }else{ // no connection
         connection_plane_conf[interpolateBit*REG_WIDTH*3+registerBit] = false;
@@ -1041,7 +1041,7 @@ void LookupTable::translate() {
   //   (_segment_space_width-_arch.selectorBits) to _segment_space_width
   int select_LSB = _segment_space_width - _arch.selectorBits;
   int select_MSB = _segment_space_width;
-  printf("selLSB: %i, selMSB: %i\n", select_LSB, select_MSB);
+  //printf("selLSB: %i, selMSB: %i\n", select_LSB, select_MSB);
   int sco = _arch.interpolationBits*REG_WIDTH*3; //segment configuration offset
   // Connect selectorBits to PLA via connection plane
   for( int selectorBit = 0; selectorBit<_arch.selectorBits; selectorBit++){
@@ -1049,7 +1049,7 @@ void LookupTable::translate() {
       if( select_LSB <= registerBit
           && registerBit < select_MSB  
           && registerBit - select_LSB == selectorBit){ // connection
-        printf("connected: regbit: %i, selbit: %i\n", registerBit, selectorBit);
+        //printf("connected: regbit: %i, selbit: %i\n", registerBit, selectorBit);
         connection_plane_conf[selectorBit*REG_WIDTH*3+registerBit+sco] = true;
       }else{ // no connection
         connection_plane_conf[selectorBit*REG_WIDTH*3+registerBit+sco] = false;
@@ -1077,18 +1077,18 @@ void LookupTable::translate() {
     }
   }
  
-  switch( _segments[0].y0.kind) {
-    case seg_data_t::Integer:
-      for( size_t i=0; i<_segments.len; i++) {
-        printf( "Prefix: %u Width: %u\n", _segments[i].prefix, _segments[i].width);
-        printf( "y0: %li, y1: %li\n", _segments[i].y0.data_i, _segments[i].y1.data_i);
-      }
-      break;
-    case seg_data_t::Double:
-        // todo: handle FP
-        assert(0 && "Floating-Point translation not implemented");
-      break;
-  }
+//  switch( _segments[0].y0.kind) {
+//    case seg_data_t::Integer:
+//      for( size_t i=0; i<_segments.len; i++) {
+//        printf( "Prefix: %u Width: %u\n", _segments[i].prefix, _segments[i].width);
+//        printf( "y0: %li, y1: %li\n", _segments[i].y0.data_i, _segments[i].y1.data_i);
+//      }
+//      break;
+//    case seg_data_t::Double:
+//        // todo: handle FP
+//        assert(0 && "Floating-Point translation not implemented");
+//      break;
+//  }
 
   // Encode to alp::array_t<unsigned char> _config_bits
   /* Encode in order:
@@ -1112,15 +1112,10 @@ void LookupTable::translate() {
     // create base first, left-shift it
     RAM_bitvector[0] = ((1uL<<_arch.base_bits)-1) & (uint32_t)_segments[i].y0.data_i;
     rbcl = _arch.base_bits;
-    //printf("(1uL<<_arch.base_bits)-1: %lx \n", (1uL<<_arch.base_bits)-1);
-    //printf("(uint64_t)(int)_segments[0].y0: %lx \n", (uint64_t)(int)_segments[i].y0);
-    //printf("(uint64_t)(int)_segments[0].y1: %lx \n", (uint64_t)(int)_segments[i].y1);
     //printf("base RAM Bitvector: %lx \n", RAM_bitvector[0]);
     // shift through processor words, if needed
     bitvector_leftshift( RAM_bitvector, rbs, &rbcl, _arch.incline_bits);
     //printf("shifted RAM Bitvector: %lx \n", RAM_bitvector[0]);
-    //printf("(int)_segments[i].y0: %x \n", (int)_segments[i].y0);
-    //printf("_segments[i].width: %u \n", _segments[i].width);
     // normalize for interpolationBits
     // TODO: When shifter HW is implemented, replace this.
     slope = ( _segments[i].y1.data_i - _segments[i].y0.data_i +
@@ -1149,14 +1144,14 @@ void LookupTable::translate() {
       bitvector_leftshift( AND_bitvector, abs, &abcl, 1);
       if(and_plane_conf[i*2*_arch.selectorBits+j]){
         AND_bitvector[0] += 1;
-        printf("1");
+        //printf("1");
       } else {
-        printf("0");
+        //printf("0");
       }
       //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
       //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
     }
-    printf(", %d\n", i);
+    //printf(", %d\n", i);
     //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
     //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
   }
@@ -1176,14 +1171,14 @@ void LookupTable::translate() {
       bitvector_leftshift( OR_bitvector, obs, &obcl, 1);
       if(or_plane_conf[j*_arch.segmentBits+i]){
         OR_bitvector[0] += 1;
-        printf("1");
+        //printf("1");
       } else {
-        printf("0");
+        //printf("0");
       }
       //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
       //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
     }
-    printf(", %d\n", i);
+    //printf(", %d\n", i);
     //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
     //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
   }
@@ -1205,19 +1200,27 @@ void LookupTable::translate() {
       bitvector_leftshift( connect_bitvector, cbs, &cbcl, 1);
       if(connection_plane_conf[i*REG_WIDTH*3+j]){
         connect_bitvector[0] += 1;
-        printf("1");
+        //printf("1");
       } else {
-        printf("0");
+        //printf("0");
       }
       //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
       //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
     }
-    printf(", %d\n", i);
+    //printf(", %d\n", i);
     //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
     //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
   }
-
+  /* TODO: the bitvectors
+             - RAM_bitvector
+             - OR_bitvector
+             - AND_bitvector
+             - connect_bitvector
+           must be written to a file of the compiler developer's choosing.
+  */
 
   // Shifter
+  //   unknown if implemented
   // comparator (one line only)
+  //   unknown if implemented
 }

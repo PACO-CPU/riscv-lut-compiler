@@ -293,7 +293,7 @@ void write_interconnect(unsigned n, unsigned d, int* current_interconnect,
   }
   // config and-plane for one interconnect
   // normal, then inverted selector lines
-  printf("AND plane protocol: ");
+  //printf("AND plane protocol: ");
   for(int i=0;i<count;i++){
     //cout << "and-normal-index: " << *current_interconnect*2*arch_selectorBits+i;
     //cout << ", and-inverted-index: " << (*current_interconnect*2+1)*arch_selectorBits+i << endl;
@@ -301,23 +301,23 @@ void write_interconnect(unsigned n, unsigned d, int* current_interconnect,
       //and_plane_conf[*current_interconnect*2*arch_selectorBits+i]=true;
       and_plane_conf[*current_interconnect*2*arch_selectorBits+i]=true;
       and_plane_conf[(*current_interconnect*2+1)*arch_selectorBits+i]=false;
-      printf("1");
+      //printf("1");
     }else if(bits[i]==0){ // inverted selector line must be connected
       and_plane_conf[*current_interconnect*2*arch_selectorBits+i]=false;
       and_plane_conf[(*current_interconnect*2+1)*arch_selectorBits+i]=true;
       //and_plane_conf[(*current_interconnect*2+1)*arch_selectorBits+i]=false;
-      printf("0");
+      //printf("0");
     }else{ // don't-care: both must not be connected
       and_plane_conf[*current_interconnect*2*arch_selectorBits+i]=false;
       and_plane_conf[(*current_interconnect*2+1)*arch_selectorBits+i]=false;
-      printf("-");
+      //printf("-");
     }
   }
-      printf("\n");
+      //printf("\n");
   // config or-plane for that same interconnect
   int tmp_cs = current_segment;
-  cout << "and plane written, current_segment: " << tmp_cs <<
-           ", current_interconnect: " << *current_interconnect << endl;
+  //cout << "and plane written, current_segment: " << tmp_cs <<
+  //         ", current_interconnect: " << *current_interconnect << endl;
   for(int i=0;i<arch_segmentBits;i++) {
     if((tmp_cs%2)==1){
       or_plane_conf[*current_interconnect*arch_segmentBits+i] = true;
@@ -385,7 +385,7 @@ void init( int* current_interconnect, int current_segment,
   write_pla_config( current_interconnect, current_segment,
                     and_plane_conf, or_plane_conf,
                     arch_selectorBits, arch_segmentBits);
-  print_final_group();
+  //print_final_group();
 }
 
 void getinput( segment_t* segment) {
