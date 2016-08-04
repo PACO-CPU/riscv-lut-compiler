@@ -10,6 +10,17 @@
 #include <FlexLexer.h>
 #include "intermediate-lexer.h"
 
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0')
+
 LookupTable::LookupTable() :
   _cmdCompileSO(options_t::Default_cmdCompileSO()),
   _num_segments(arch_config_t::Default_numSegments),
@@ -956,6 +967,302 @@ seg_data_t LookupTable::evaluate(size_t addr, uint64_t offset) {
   return res;
 }
 
+void LookupTable::print_translation_parameters(){
+  // num of the PLA inputs (inverted not included)
+  printf("selectorBits: %i\n", _arch.selectorBits);
+  // number of wires between AND and OR plane of the PLA
+  printf("_arch.plaInterconnects: %i\n", _arch.plaInterconnects );
+  // width of the PLA output
+  printf(
+    "_arch.segmentBits: %i (2^segmentBits: # of possible different MAu inputs)\n",
+    _arch.segmentBits);
+  // assert that number of segments does not exceed log2(segmentBits),
+  // meaning the number of LUT memory slots is sufficient
+  assert( (_segments.len >> _arch.segmentBits) == 0 &&
+          "translate: #of segments exceeds LUT memory slots");
+  // number of input bits that the LUT multiply/add unit (MAu) uses by design
+  printf("interpolationBits: %i\n", _arch.interpolationBits);
+  // number of input bits that will used in this configuration (<= previous)
+  printf("segment_interpolation_bits: %i\n", segment_interpolation_bits());
+  // no idea!
+  printf("_num_segments: %i\n", _num_segments);
+  // no idea!
+  printf("_num_primary_segments: %i\n", _num_primary_segments);
+  // offset of the beginning of the first segment from input space, integer
+  printf("_segment_space_offset: %li\n", _segment_space_offset.data_i );
+  // log2 of the width of the input domain
+  printf("_segment_space_width: %i\n", _segment_space_width );
+}
+
+  /**
+    * Shift a bitvector left through a uint64_t array.
+    */
+void LookupTable::bitvector_leftshift( uint64_t* bitvector, int len, int* current_bits,
+                            int additional_bits){
+    if((*current_bits/64)<((*current_bits+additional_bits)/64)){
+      for( int j=len-1; j>0; j--){
+        bitvector[j] = (bitvector[j] << additional_bits) +
+                           (bitvector[j-1] >> (additional_bits-64));
+      }
+        bitvector[0] = (bitvector[0] << additional_bits);
+    } else {
+      for( int j=len-1; j>=0; j--){
+        bitvector[j] = (bitvector[j] << additional_bits);
+      }
+    }
+    *current_bits += additional_bits;
+  }
+
 void LookupTable::translate() {
-  // todo: implement 
+  /** 
+    * The translation function translates an arithmetical specification
+    * of segments delivered by the compiler frontend into binary bitstreams
+    * that can be transferred to the LUT hardware in the pipeline via DMA.
+    * There, these bitstreams define the behaviour of the address translation
+    * PLA and provide output values for each segment either directly or via
+    * the LUT units inbuilt Multiply-Add unit.
+    */
+
+  // do a sanity check on the LUT description
+  assert( _segments.len > 0 && "translate: #of segments not larger than 0");
+  
+  //print_translation_parameters();
+
+  // Variables of interest during translation
+  const int REG_WIDTH = 64;
+
+  // Allocate char arrays to hold config information.
+  // And plane of the PLA; *2: for inverted inputs
+  and_plane_conf = new char[_arch.plaInterconnects*2*_arch.selectorBits];
+  // Or plane of the PLA
+  or_plane_conf = new char[_arch.plaInterconnects*_arch.segmentBits];
+  // Connection plane connecting suitable input lines to the PLA
+  connection_plane_conf = new char[3*REG_WIDTH*(_arch.selectorBits
+				       +_arch.interpolationBits)];
+  // Array of LUT outputs used as factors in the Multiply-Add unit
+  factor_output = new seg_data_t[1<<_arch.segmentBits];
+  // Array of LUT outputs used as offsets in the Multiply-Add unit
+  offset_output = new seg_data_t[1<<_arch.segmentBits];
+  // TODO: for now, only linear interpolation, no steps
+  use_multiply_add = true;
+
+
+  /* Calculate LUT decoder configuration
+     - calculate *which* bits of the input are used for selection and
+       interpolation.
+     - calculate MinTerms for And plane of PLA
+     - Or plane: naive addresses for now
+   */
+  // 1. connection plane
+  // Connect interpolationBits for Multiply-Add unit
+  // Which LUT input bits are used for interpolation within segments?
+  // Counting from MSBs:
+  //   The selectorBits and following until a number of interpolationBits
+  //   is reached.
+  int interpolate_LSB = _segment_space_width - _arch.interpolationBits;
+  int interpolate_MSB = _segment_space_width;
+  //printf("interpolateLSB: %i, interpolateMSB: %i\n",
+  //       interpolate_LSB, interpolate_MSB);
+  // Connect selectorBits to PLA via connection plane
+  for( int interpolateBit = 0; interpolateBit<_arch.interpolationBits; 
+       interpolateBit++){
+    for( int registerBit = 0; registerBit<REG_WIDTH*3; registerBit++){
+      if( interpolate_LSB <= registerBit
+          && registerBit < interpolate_MSB  
+          && registerBit - interpolate_LSB == interpolateBit){ // connection
+        //printf("connected: regbit: %i, interpolatebit: %i\n",
+        //        registerBit, interpolateBit);
+        connection_plane_conf[interpolateBit*REG_WIDTH*3+registerBit] = true;
+      }else{ // no connection
+        connection_plane_conf[interpolateBit*REG_WIDTH*3+registerBit] = false;
+      }
+    }
+  }
+  // Which LUT input bits are used for segment selection?
+  // Counting from LSBs:
+  //   (_segment_space_width-_arch.selectorBits) to _segment_space_width
+  int select_LSB = _segment_space_width - _arch.selectorBits;
+  int select_MSB = _segment_space_width;
+  //printf("selLSB: %i, selMSB: %i\n", select_LSB, select_MSB);
+  int sco = _arch.interpolationBits*REG_WIDTH*3; //segment configuration offset
+  // Connect selectorBits to PLA via connection plane
+  for( int selectorBit = 0; selectorBit<_arch.selectorBits; selectorBit++){
+    for( int registerBit = 0; registerBit<REG_WIDTH*3; registerBit++){ // 3 rs
+      if( select_LSB <= registerBit
+          && registerBit < select_MSB  
+          && registerBit - select_LSB == selectorBit){ // connection
+        //printf("connected: regbit: %i, selbit: %i\n", registerBit, selectorBit);
+        connection_plane_conf[selectorBit*REG_WIDTH*3+registerBit+sco] = true;
+      }else{ // no connection
+        connection_plane_conf[selectorBit*REG_WIDTH*3+registerBit+sco] = false;
+      }
+    }
+  }
+
+  // 2. PLA -- MinTerms and naive addresses
+  int current_interconnect = 0;
+  for( size_t current_segment = 0; current_segment < _segments.len;
+       current_segment++){
+    qmc_pla_gen( &current_interconnect, current_segment,
+                 &_segments[current_segment],
+                 and_plane_conf, or_plane_conf, _arch.selectorBits,
+                 _arch.segmentBits);
+  }
+  // write impossible MinTerms to rest of and_plane_conf, initialize or_plane
+  for(; current_interconnect<_arch.plaInterconnects; current_interconnect++){
+    for(int i=0;i<_arch.selectorBits;i++) {
+      and_plane_conf[current_interconnect*2*_arch.selectorBits+i]=true;
+      and_plane_conf[(current_interconnect*2+1)*_arch.selectorBits+i]=true;
+    }
+    for(int i=0;i<_arch.segmentBits;i++) {
+      or_plane_conf[current_interconnect*_arch.segmentBits+i] = true;
+    }
+  }
+ 
+//  switch( _segments[0].y0.kind) {
+//    case seg_data_t::Integer:
+//      for( size_t i=0; i<_segments.len; i++) {
+//        printf( "Prefix: %u Width: %u\n", _segments[i].prefix, _segments[i].width);
+//        printf( "y0: %li, y1: %li\n", _segments[i].y0.data_i, _segments[i].y1.data_i);
+//      }
+//      break;
+//    case seg_data_t::Double:
+//        // todo: handle FP
+//        assert(0 && "Floating-Point translation not implemented");
+//      break;
+//  }
+
+  // Encode to alp::array_t<unsigned char> _config_bits
+  /* Encode in order:
+       - RAM1, RAM2, ..., RAMn
+       - PLAo, PLAo-1, ..., PLA1
+       - IDECm, IDECm-1, ..., IDEC1
+       - shifter ?
+       - comparator (one line only) ?
+   */
+  // RAM
+  // in every bitvector: lower bits are incline, upper are base
+  uint64_t* RAM_bitvector;
+  int64_t slope;
+  int64_t normalized_slope;
+  // create bitvector, rounding words up.
+  int rbs = (_arch.incline_bits+_arch.base_bits+63)/64; //RAM bitvector size
+  int rbcl; // current length of the bitvector in bits
+  RAM_bitvector = new uint64_t[rbs];
+  for( size_t i=0; i<_segments.len; i++) {
+    for( int j=0; j<rbs; j++) RAM_bitvector[j]=0;
+    // create base first, left-shift it
+    RAM_bitvector[0] = ((1uL<<_arch.base_bits)-1) & (uint32_t)_segments[i].y0.data_i;
+    rbcl = _arch.base_bits;
+    //printf("base RAM Bitvector: %lx \n", RAM_bitvector[0]);
+    // shift through processor words, if needed
+    bitvector_leftshift( RAM_bitvector, rbs, &rbcl, _arch.incline_bits);
+    //printf("shifted RAM Bitvector: %lx \n", RAM_bitvector[0]);
+    // normalize for interpolationBits
+    // TODO: When shifter HW is implemented, replace this.
+    slope = ( _segments[i].y1.data_i - _segments[i].y0.data_i +
+              _arch.interpolationBits / 2) /_arch.interpolationBits;
+    //printf("slope: %lx \n", slope);
+    //printf("(_segment_space_width-_arch.interpolationBits): %u \n", (_segment_space_width-_arch.interpolationBits));
+    normalized_slope = slope << (_segment_space_width-_arch.interpolationBits);
+    //printf("shifted slope: %lx \n", normalized_slope);
+    RAM_bitvector[0] += ((1uL<<_arch.incline_bits)-1) & (uint64_t)normalized_slope;
+  }
+
+  // PLA, first all AND then OR
+  // AND: 2*selectorBits length, configure lowest interconnect (AND1) first,
+  //      first bit: LSB connectionPlane, ..., MSB connectionPlane, inverted ..
+  uint64_t* AND_bitvector;
+  // create bitvector, rounding words up.
+  int abs = (2*_arch.selectorBits+63)/64; //AND bitvector size
+  int abcl; // current length of the bitvector in bits
+  AND_bitvector = new uint64_t[abs];
+  for( int i=0; i<_arch.plaInterconnects; i++) {
+    for( int j=0; j<abs; j++) AND_bitvector[j]=0;
+    // start from MSB from connectionPlane, then push through
+    abcl = 0;
+    for( int j=2*_arch.selectorBits-1; j>=0; j--){
+      // shift left, through processor words if needed
+      bitvector_leftshift( AND_bitvector, abs, &abcl, 1);
+      if(and_plane_conf[i*2*_arch.selectorBits+j]){
+        AND_bitvector[0] += 1;
+        //printf("1");
+      } else {
+        //printf("0");
+      }
+      //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
+      //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+    }
+    //printf(", %d\n", i);
+    //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
+    //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+  }
+
+  // OR: number of interconnects length, first bit for each vector is for AND1
+  uint64_t* OR_bitvector;
+  // create bitvector, rounding words up.
+  int obs = (_arch.plaInterconnects+63)/64; //OR bitvector size
+  int obcl; // current length of the bitvector in bits
+  OR_bitvector = new uint64_t[obs];
+  for( int i=0; i<_arch.segmentBits; i++) {
+    for( int j=0; j<obs; j++) OR_bitvector[j]=0;
+    // start from last AND, then push through
+    obcl = 0;
+    for( int j=_arch.plaInterconnects-1; j>=0; j--){
+      // shift left, through processor words if needed
+      bitvector_leftshift( OR_bitvector, obs, &obcl, 1);
+      if(or_plane_conf[j*_arch.segmentBits+i]){
+        OR_bitvector[0] += 1;
+        //printf("1");
+      } else {
+        //printf("0");
+      }
+      //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
+      //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+    }
+    //printf(", %d\n", i);
+    //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
+    //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+  }
+
+  // connection plane, most significant register bit first, starting with rs3
+  // first: selectorBits configuration, push
+  // second: interpolationBits configuration
+  uint64_t* connect_bitvector;
+  // create bitvector, rounding words up.
+  int cbs = (REG_WIDTH*3+63)/64; //connection bitvector size
+  int cbcl; // current length of the bitvector in bits
+  connect_bitvector = new uint64_t[cbs];
+  for( int i=0; i<_arch.interpolationBits+_arch.selectorBits; i++) {
+    for( int j=0; j<cbs; j++) connect_bitvector[j]=0;
+    // start from MSB of rs3, then push through
+    cbcl = 0;
+    for( int j=REG_WIDTH*3-1; j>=0; j--){
+      // shift left, through processor words if needed
+      bitvector_leftshift( connect_bitvector, cbs, &cbcl, 1);
+      if(connection_plane_conf[i*REG_WIDTH*3+j]){
+        connect_bitvector[0] += 1;
+        //printf("1");
+      } else {
+        //printf("0");
+      }
+      //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
+      //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+    }
+    //printf(", %d\n", i);
+    //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
+    //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+  }
+  /* TODO: the bitvectors
+             - RAM_bitvector
+             - OR_bitvector
+             - AND_bitvector
+             - connect_bitvector
+           must be written to a file of the compiler developer's choosing.
+  */
+
+  // Shifter
+  //   unknown if implemented
+  // comparator (one line only)
+  //   unknown if implemented
 }

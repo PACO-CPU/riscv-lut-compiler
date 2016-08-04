@@ -1,0 +1,13 @@
+To compile:
+replace Makefile with the one from branch atomic-segments
+( git checkout atomic-segments Makefile )
+make clean
+make
+
+To run all tests:
+make tests
+
+To run a single test:
+make test-segment-uniform (see make.incl)
+
+To actually use translate: run without -i option

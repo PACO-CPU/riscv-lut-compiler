@@ -22,8 +22,14 @@ struct arch_config_t {
     Default_segmentBits = 4, 
     // 3 variables input into the PLA (select 8 segments)
     Default_selectorBits = 3,
+    // 64 interconnects on the PLA
+    Default_plaInterconnects = 64, 
     // 8 bits of interpolation / 256 points
     Default_interpolationBits = 8, 
+    // 32-bit offsets in Multiply-Add unit possible
+    Default_base_bits = 32, 
+    // 8-bit factors for interpolationBits possible in Multiply-Add unit
+    Default_incline_bits = 8, 
   };
   // options go here.
   int numSegments;
@@ -34,6 +40,7 @@ struct arch_config_t {
     *
     * A LUT hardware core generally has a power of two number of segments.
     * This power is represented in segmentBits.
+    * I.e. 2^segmentBits = number of offset/slope pairs in LUT RAM
     */
   int segmentBits;
 
@@ -56,6 +63,15 @@ struct arch_config_t {
     */
   int plaInterconnects;
 
+  /** Maximum number of bits for the base value added to the product of
+    * interpolationBits and incline_bits in Multiply-Add unit.
+    */
+  int base_bits;
+
+  /** Maximum number of bits for the incline value multiplied
+    * interpolationBits in Multiply-Add unit.
+    */
+  int incline_bits;
 
   /** Threshold of internal waste of a segment at which it is preferred to
     * create a smaller threshold that renders a few elements of the domain
@@ -77,7 +93,9 @@ struct arch_config_t {
     segmentBits(Default_segmentBits),
     selectorBits(Default_selectorBits),
     interpolationBits(Default_interpolationBits),
-    plaInterconnects(Default_interpolationBits),
+    plaInterconnects(Default_plaInterconnects),
+    base_bits( Default_base_bits),
+    incline_bits( Default_incline_bits),
     domainCutoffThreshold(1), // no cutoff
     resolutionWarnThreshold(0) // no warning
     {
