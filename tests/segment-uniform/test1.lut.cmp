@@ -1,5 +1,5 @@
 name "test1"
-domain 10  0
+domain 19  524289
 segment 0 2 0 0
 segment 2 2 0 0
 segment 4 2 0 0

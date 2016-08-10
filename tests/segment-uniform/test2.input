@@ -11,5 +11,5 @@ target int -> int
 
 
 int target(int a) {
-  return a;
+  return 0;
 }
