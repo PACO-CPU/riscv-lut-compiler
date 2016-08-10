@@ -36,6 +36,7 @@ struct options_t {
 
   int fOutputIntermediate;
   int fOutputC;
+  int fOutputDump;
   
   int maxWeightSteps;
 

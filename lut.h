@@ -96,7 +96,7 @@ class LookupTable {
     
     /** LUT configuration bitstream
       */
-    alp::array_t<unsigned char> _config_bits;
+    alp::array_t<uint64_t> _config_words;
 
   public:
     /** Constructor.
@@ -259,6 +259,9 @@ class LookupTable {
       * \throw FileIOException The file could not be written to.
       */
     void saveOutputFile(const char *fn);
+
+    void generateOutputDumpFormat(alp::string &res);
+    void saveOutputDumpFile(const char *fn);
     
     
     /** Computes the segment space of this LUT.

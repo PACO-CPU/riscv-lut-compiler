@@ -395,11 +395,9 @@ void LookupTable::parseIntermediate(
         break;
 
       case IntermediateFlexLexer::TOK_KWSEGMENT:
-        if (domainDefined) 
-          SyntaxWarning("domain redefined",lex);
 
-        newSegment.width=ARGUI;
         newSegment.prefix=ARGUI;
+        newSegment.width=ARGUI;
         newSegment.y0=ARG;
         newSegment.y1=ARG;
 
@@ -409,6 +407,9 @@ void LookupTable::parseIntermediate(
         NEWLINE 
         break;
       case IntermediateFlexLexer::TOK_KWDOMAIN:
+        if (domainDefined) 
+          SyntaxWarning("domain redefined",lex);
+
         _segment_space_width=ARGUI;
         _segment_space_offset=ARG;
         
@@ -509,21 +510,64 @@ void LookupTable::saveIntermediateFile(const char *fn) {
 
 void LookupTable::generateOutputFormat(alp::string &res) {
   res.clear();
-  res+=alp::string::Format(
-    "const char %s_config[%i]=\"",
-    _ident.ptr,_config_bits.len);
-  
-  for(size_t i=0;i<_config_bits.len;i++) {
-    res+=alp::string::Format("\\x%.2x",_config_bits[i]);
+  switch(_arch.wordSize) {
+    case 32:
+      res+=alp::string::Format(
+        "const uint32_t %s_config[%i]={",
+        _ident.ptr,_config_words.len);
+     
+     if (_config_words.len>0) {
+        res+=alp::string::Format("0x%.8xul",_config_words[0]&0xffffffff);
+        for(size_t i=0;i<_config_words.len;i++) {
+          res+=alp::string::Format(",0x%.8xul",_config_words[i]&0xffffffff);
+        }
+      }
+      break;
+    case 64:
+      res+=alp::string::Format(
+        "const uint64_t %s_config[%i]={",
+        _ident.ptr,_config_words.len);
+      
+      if (_config_words.len>0) {
+        res+=alp::string::Format("0x%.16xuL",_config_words[0]);
+        for(size_t i=0;i<_config_words.len;i++) {
+          res+=alp::string::Format(",0x%.16xuL",_config_words[i]);
+        }
+      }
+      break;
+    default:
+      assert(0 && "unsupported target word size");
   }
 
-  res+="\";\n";
+  res+="};\n";
 }
 
 void LookupTable::saveOutputFile(const char *fn) {
   alp::string data;
   FILE *f;
   generateOutputFormat(data);
+
+  f=fopen(fn,"wb");
+  if (!f) throw FileIOException(fn);
+  
+  if (fwrite(data.ptr,1,data.len,f)<data.len) {
+    fclose(f);
+    throw FileIOException(fn);
+  }
+
+  fclose(f);
+}
+
+void LookupTable::generateOutputDumpFormat(alp::string &res) {
+  res.clear();
+  for(size_t i=0;i<_config_words.len;i++)
+    res+=alp::string::Format("%Lu\n",_config_words[i]);
+}
+
+void LookupTable::saveOutputDumpFile(const char *fn) {
+  alp::string data;
+  FILE *f;
+  generateOutputDumpFormat(data);
 
   f=fopen(fn,"wb");
   if (!f) throw FileIOException(fn);

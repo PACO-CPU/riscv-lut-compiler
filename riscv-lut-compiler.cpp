@@ -290,10 +290,12 @@ static int run_lut_compilation(options_t &options) {
     options.computeOutputName();
     if (options.fOutputIntermediate) {
       lut->saveIntermediateFile(options.outputName.ptr);
-    } else {
+    } else if (options.fOutputDump) {
       lut->translate();
       if (options.fOutputC) {
         lut->saveOutputFile(options.outputName.ptr);
+      } else if (options.fOutputDump) {
+        lut->saveOutputDumpFile(options.outputName.ptr);
       } else {
         TempDir tmpdir;
         alp::string fn_c=tmpdir.path()+"lut.c";
