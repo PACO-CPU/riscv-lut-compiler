@@ -1,0 +1,7 @@
+
+selectorBits = 4
+interpolationBits = 8
+segmentBits = 3
+plaInterconnects = 12
+base_bits=32
+incline_bits=32
