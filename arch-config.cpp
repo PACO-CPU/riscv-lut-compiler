@@ -41,10 +41,20 @@ void arch_config_t::parse(const char *ptr, size_t cb, const char *name) {
         if (0) {
         KVTEST("numSegments",Integer)
           numSegments=kv->val_num().data_i;
+        KVTEST("wordSize",Integer)
+          wordSize=kv->val_num().data_i;
         KVTEST("segmentBits",Integer)
           segmentBits=kv->val_num().data_i;
         KVTEST("selectorBits",Integer)
           selectorBits=kv->val_num().data_i;
+        KVTEST("interpolationBits",Integer)
+          interpolationBits=kv->val_num().data_i;
+        KVTEST("plaInterconnects",Integer)
+          plaInterconnects=kv->val_num().data_i;
+        KVTEST("base_bits",Integer)
+          base_bits=kv->val_num().data_i;
+        KVTEST("incline_bits",Integer)
+          incline_bits=kv->val_num().data_i;
         KVTEST("interpolationBits",Integer)
           plaInterconnects=kv->val_num().data_i;
         KVTEST("domainCutoffThreshold",Float)
