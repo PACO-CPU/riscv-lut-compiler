@@ -13,7 +13,8 @@ struct B_number{
 //----------------------------------------------------------
 void qmc_pla_gen( int* current_interconnect, int current_segment, 
                   segment_t* subseg, char* and_plane_conf, char* or_plane_conf,
-                  int arch_selectorBits, int arch_segmentBits); //gen PLA conf
+                  int arch_selectorBits, int arch_segmentBits,
+                  int arch_plaInterconnects); //gen PLA conf
 unsigned count_1s(unsigned number); //count the number of 1s in a number
 void print_binary(unsigned number);//print the number in binary
 void create_table();            //create original table sorted by the number of 1s
@@ -29,13 +30,15 @@ bool is_written(B_number n);
 void write_interconnect(unsigned n, unsigned d, int* current_interconnect,
                         int current_segment, char* and_plane_conf,
                         char* or_plane_conf, int arch_selectorBits, 
-                        int arch_segmentBits);
+                        int arch_segmentBits, int arch_plaInterconnects);
 void write_pla_config( int* current_interconnect, int current_segment, //write pla config
                        char* and_plane_conf, char* or_plane_conf,
-                       int arch_selectorBits, int arch_segmentBits);
+                       int arch_selectorBits, int arch_segmentBits,
+                       int arch_plaInterconnects);
 void init( int* current_interconnect, int current_segment, //start the table making and printing
                        char* and_plane_conf, char* or_plane_conf,
-                       int arch_selectorBits, int arch_segmentBits);
+                       int arch_selectorBits, int arch_segmentBits,
+                       int arch_plaInterconnects);
 void getinput( segment_t* segment);     //get input from segment
 unsigned count_bits(unsigned n);        //min bits to represent a number
 //----------------------------------------------------------

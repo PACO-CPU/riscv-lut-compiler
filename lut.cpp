@@ -1038,24 +1038,6 @@ void LookupTable::print_translation_parameters(){
   printf("_segment_space_width: %i\n", _segment_space_width );
 }
 
-  /**
-    * Shift a bitvector left through a uint64_t array.
-    */
-void LookupTable::bitvector_leftshift( uint64_t* bitvector, int len, int* current_bits,
-                            int additional_bits){
-    if((*current_bits/64)<((*current_bits+additional_bits)/64)){
-      for( int j=len-1; j>0; j--){
-        bitvector[j] = (bitvector[j] << additional_bits) +
-                           (bitvector[j-1] >> (additional_bits-64));
-      }
-        bitvector[0] = (bitvector[0] << additional_bits);
-    } else {
-      for( int j=len-1; j>=0; j--){
-        bitvector[j] = (bitvector[j] << additional_bits);
-      }
-    }
-    *current_bits += additional_bits;
-  }
 
 void LookupTable::translate() {
   /** 
@@ -1074,6 +1056,7 @@ void LookupTable::translate() {
 
   // Variables of interest during translation
   const int REG_WIDTH = 64;
+  const uint64_t REG_MASK = 0xffffffffffffffff;
 
   // Allocate char arrays to hold config information.
   // And plane of the PLA; *2: for inverted inputs
@@ -1089,7 +1072,7 @@ void LookupTable::translate() {
   offset_output = new seg_data_t[1<<_arch.segmentBits];
   // TODO: for now, only linear interpolation, no steps
   use_multiply_add = true;
-
+  
 
   /* Calculate LUT decoder configuration
      - calculate *which* bits of the input are used for selection and
@@ -1103,7 +1086,7 @@ void LookupTable::translate() {
   // Counting from MSBs:
   //   The selectorBits and following until a number of interpolationBits
   //   is reached.
-  int interpolate_LSB = _segment_space_width - _arch.interpolationBits;
+  int interpolate_LSB = _segment_space_width - _arch.interpolationBits-_arch.selectorBits;
   int interpolate_MSB = _segment_space_width;
   //printf("interpolateLSB: %i, interpolateMSB: %i\n",
   //       interpolate_LSB, interpolate_MSB);
@@ -1150,7 +1133,7 @@ void LookupTable::translate() {
     qmc_pla_gen( &current_interconnect, current_segment,
                  &_segments[current_segment],
                  and_plane_conf, or_plane_conf, _arch.selectorBits,
-                 _arch.segmentBits);
+                 _arch.segmentBits, _arch.plaInterconnects);
   }
   // write impossible MinTerms to rest of and_plane_conf, initialize or_plane
   for(; current_interconnect<_arch.plaInterconnects; current_interconnect++){
@@ -1159,154 +1142,147 @@ void LookupTable::translate() {
       and_plane_conf[(current_interconnect*2+1)*_arch.selectorBits+i]=true;
     }
     for(int i=0;i<_arch.segmentBits;i++) {
-      or_plane_conf[current_interconnect*_arch.segmentBits+i] = true;
+      or_plane_conf[current_interconnect+_arch.plaInterconnects*i] = true;
     }
   }
  
-//  switch( _segments[0].y0.kind) {
-//    case seg_data_t::Integer:
-//      for( size_t i=0; i<_segments.len; i++) {
-//        printf( "Prefix: %u Width: %u\n", _segments[i].prefix, _segments[i].width);
-//        printf( "y0: %li, y1: %li\n", _segments[i].y0.data_i, _segments[i].y1.data_i);
-//      }
-//      break;
-//    case seg_data_t::Double:
-//        // todo: handle FP
-//        assert(0 && "Floating-Point translation not implemented");
-//      break;
-//  }
+  
+  
+  { // allocate bitstream data structure 
+    // number of words required to store specified number of bits
+    #define NWORDS(nbits) ( \
+      (nbits)/_arch.wordSize + (((nbits)%_arch.wordSize>0)?1:0) )
 
-  // Encode to alp::array_t<unsigned char> _config_bits
-  /* Encode in order:
-       - RAM1, RAM2, ..., RAMn
-       - PLAo, PLAo-1, ..., PLA1
-       - IDECm, IDECm-1, ..., IDEC1
-       - shifter ?
-       - comparator (one line only) ?
-   */
-  // RAM
-  // in every bitvector: lower bits are incline, upper are base
-  uint64_t* RAM_bitvector;
-  int64_t slope;
-  int64_t normalized_slope;
-  // create bitvector, rounding words up.
-  int rbs = (_arch.incline_bits+_arch.base_bits+63)/64; //RAM bitvector size
-  int rbcl; // current length of the bitvector in bits
-  RAM_bitvector = new uint64_t[rbs];
-  for( size_t i=0; i<_segments.len; i++) {
-    for( int j=0; j<rbs; j++) RAM_bitvector[j]=0;
-    // create base first, left-shift it
-    RAM_bitvector[0] = ((1uL<<_arch.base_bits)-1) & (uint32_t)_segments[i].y0.data_i;
-    rbcl = _arch.base_bits;
-    //printf("base RAM Bitvector: %lx \n", RAM_bitvector[0]);
-    // shift through processor words, if needed
-    bitvector_leftshift( RAM_bitvector, rbs, &rbcl, _arch.incline_bits);
-    //printf("shifted RAM Bitvector: %lx \n", RAM_bitvector[0]);
-    // normalize for interpolationBits
-    // TODO: When shifter HW is implemented, replace this.
-    slope = ( _segments[i].y1.data_i - _segments[i].y0.data_i +
-              _arch.interpolationBits / 2) /_arch.interpolationBits;
-    //printf("slope: %lx \n", slope);
-    //printf("(_segment_space_width-_arch.interpolationBits): %u \n", (_segment_space_width-_arch.interpolationBits));
-    normalized_slope = slope << (_segment_space_width-_arch.interpolationBits);
-    //printf("shifted slope: %lx \n", normalized_slope);
-    RAM_bitvector[0] += ((1uL<<_arch.incline_bits)-1) & (uint64_t)normalized_slope;
+    _config_words.setlen(
+      // RAM
+      NWORDS(_arch.base_bits+_arch.incline_bits)*(1<<_arch.segmentBits) +
+      // input decoder
+      NWORDS(3*_arch.wordSize)*(_arch.selectorBits+_arch.interpolationBits)+
+      // PLA AND plane
+      NWORDS(2*_arch.selectorBits)*_arch.plaInterconnects+
+      // PLA OR plane
+      NWORDS(2*_arch.plaInterconnects)*_arch.segmentBits);
+    #undef NWORDS
   }
 
-  // PLA, first all AND then OR
-  // AND: 2*selectorBits length, configure lowest interconnect (AND1) first,
-  //      first bit: LSB connectionPlane, ..., MSB connectionPlane, inverted ..
-  uint64_t* AND_bitvector;
-  // create bitvector, rounding words up.
-  int abs = (2*_arch.selectorBits+63)/64; //AND bitvector size
-  int abcl; // current length of the bitvector in bits
-  AND_bitvector = new uint64_t[abs];
-  for( int i=0; i<_arch.plaInterconnects; i++) {
-    for( int j=0; j<abs; j++) AND_bitvector[j]=0;
-    // start from MSB from connectionPlane, then push through
-    abcl = 0;
-    for( int j=2*_arch.selectorBits-1; j>=0; j--){
-      // shift left, through processor words if needed
-      bitvector_leftshift( AND_bitvector, abs, &abcl, 1);
-      if(and_plane_conf[i*2*_arch.selectorBits+j]){
-        AND_bitvector[0] += 1;
-        //printf("1");
-      } else {
-        //printf("0");
-      }
-      //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
-      //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+  { // write configuration bitstream word-by-word
+    // the configuration bitstream was allocated, now it is traversed through
+    // insert_pos, incrementally or decrementally.
+    uint64_t cur_word=0;
+    int cur_bits=0;
+    uint64_t *insert_pos=NULL;
+    bool insert_incr=true;
+
+    // write currently built word to bitstream vector, if not empty
+    #define FLUSH if (cur_bits>0) { \
+      if (insert_incr) \
+        *insert_pos++=cur_word&REG_MASK; \
+      else \
+        *insert_pos--=cur_word&REG_MASK; \
+      cur_word=0; \
+      cur_bits=0; \
     }
-    //printf(", %d\n", i);
-    //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
-    //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
-  }
-
-  // OR: number of interconnects length, first bit for each vector is for AND1
-  uint64_t* OR_bitvector;
-  // create bitvector, rounding words up.
-  int obs = (_arch.plaInterconnects+63)/64; //OR bitvector size
-  int obcl; // current length of the bitvector in bits
-  OR_bitvector = new uint64_t[obs];
-  for( int i=0; i<_arch.segmentBits; i++) {
-    for( int j=0; j<obs; j++) OR_bitvector[j]=0;
-    // start from last AND, then push through
-    obcl = 0;
-    for( int j=_arch.plaInterconnects-1; j>=0; j--){
-      // shift left, through processor words if needed
-      bitvector_leftshift( OR_bitvector, obs, &obcl, 1);
-      if(or_plane_conf[j*_arch.segmentBits+i]){
-        OR_bitvector[0] += 1;
-        //printf("1");
-      } else {
-        //printf("0");
-      }
-      //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
-      //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+    
+    // write the bits LSBs of data to the currently constructed word, appending
+    // as many words as needed
+    #define WRITE_BITS(bits,data) { \
+      int _bits=bits; \
+      uint64_t _data=data; \
+      while (cur_bits+_bits>REG_WIDTH) { \
+        int n=REG_WIDTH-cur_bits; \
+        cur_word|=(_data&((1uL<<n)-1))<<cur_bits; \
+        FLUSH; \
+        _data>>=n; \
+        _bits-=n; \
+      } \
+      cur_word|=(_data&((1uL<<_bits)-1))<<cur_bits; \
+      cur_bits+=_bits; \
     }
-    //printf(", %d\n", i);
-    //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
-    //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
-  }
-
-  // connection plane, most significant register bit first, starting with rs3
-  // first: selectorBits configuration, push
-  // second: interpolationBits configuration
-  uint64_t* connect_bitvector;
-  // create bitvector, rounding words up.
-  int cbs = (REG_WIDTH*3+63)/64; //connection bitvector size
-  int cbcl; // current length of the bitvector in bits
-  connect_bitvector = new uint64_t[cbs];
-  for( int i=0; i<_arch.interpolationBits+_arch.selectorBits; i++) {
-    for( int j=0; j<cbs; j++) connect_bitvector[j]=0;
-    // start from MSB of rs3, then push through
-    cbcl = 0;
-    for( int j=REG_WIDTH*3-1; j>=0; j--){
-      // shift left, through processor words if needed
-      bitvector_leftshift( connect_bitvector, cbs, &cbcl, 1);
-      if(connection_plane_conf[i*REG_WIDTH*3+j]){
-        connect_bitvector[0] += 1;
-        //printf("1");
-      } else {
-        //printf("0");
-      }
-      //printf("bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
-      //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
+    
+    // copy char-encoded bits to currently constructed word
+    #define EXTRACT_ACTUAL(ptr,bits) { \
+      for(int i_bit=0;i_bit<bits;i_bit++)  \
+        cur_word|=((ptr[i_bit]==true) ? 1 : 0) << (i_bit+cur_bits); \
+      cur_bits+=bits; \
     }
-    //printf(", %d\n", i);
-    //printf("AND bitvector: " BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN "\n",
-    //BYTE_TO_BINARY((AND_bitvector[0])>>8), BYTE_TO_BINARY(AND_bitvector[0]));
-  }
-  /* TODO: the bitvectors
-             - RAM_bitvector
-             - OR_bitvector
-             - AND_bitvector
-             - connect_bitvector
-           must be written to a file of the compiler developer's choosing.
-  */
+    
+    // extract a number of bits from a char-encoded stream of bits.
+    // appends as many words as needed to represent the bits.
+    #define EXTRACT(ptr,bits) if ((bits)>0) { \
+      int _bits=bits; \
+      char *_ptr=ptr; \
+      while (cur_bits+_bits>REG_WIDTH) { \
+        int n=REG_WIDTH-cur_bits; \
+        EXTRACT_ACTUAL(_ptr,n); \
+        FLUSH; \
+        _ptr+=n; \
+        _bits-=n; \
+      } \
+      EXTRACT_ACTUAL(_ptr,_bits); \
+    }
+    
+    // extract multi-word value from char-encoded stream of bits 
+    // and store in correct word order.
+    #define EXTRACT_VALUE(ptr,width) { \
+      /* number of _full_ words */ \
+      int _words=(width)/_arch.wordSize; \
+      /* extract high-order word if it aint a full one */ \
+      EXTRACT(ptr+_words*_arch.wordSize,(width)%_arch.wordSize); \
+      FLUSH; \
+      /* extract remainder */ \
+      for(int i_word=_words-1;i_word>-1;i_word--) { \
+        EXTRACT(ptr+i_word*_arch.wordSize,_arch.wordSize) \
+        FLUSH; \
+      } \
+    }
+    
+    // extract a multiple multi-word values
+    #define EXTRACT_VECTOR(base,count,width) { \
+      for(int i=0;i<(count);i++) \
+        EXTRACT_VALUE((base)+i*(width),(width)); \
+    }
+    
+    // insert RAM data at the beginning of the bitstream
+    insert_pos=_config_words.ptr;
+    insert_incr=true;
+    
+    for(size_t i=0;i<_segments.len;i++) {
+      uint64_t base,incline;
+      base=(int64_t)_segments[i].y0;
+      incline=(int64_t)(_segments[i].y1-_segments[i].y0);
+      incline/=(1<<_arch.interpolationBits)*_segments[i].width;
 
-  // Shifter
-  //   unknown if implemented
-  // comparator (one line only)
-  //   unknown if implemented
+      base-=incline*(1<<_arch.interpolationBits)*_segments[i].prefix;
+
+      WRITE_BITS(_arch.incline_bits,incline);
+      WRITE_BITS(_arch.base_bits,base);
+      FLUSH;
+    }
+
+
+    // start inserting chain registers at the very end to omit reversing later
+    insert_pos=_config_words.ptr+_config_words.len-1;
+    insert_incr=false;
+    EXTRACT_VECTOR(
+      connection_plane_conf,
+      _arch.selectorBits+_arch.interpolationBits,
+      3*_arch.wordSize);
+
+    EXTRACT_VECTOR(
+      and_plane_conf,
+      _arch.plaInterconnects,
+      _arch.selectorBits*2);
+
+    EXTRACT_VECTOR(
+      or_plane_conf,
+      _arch.segmentBits,
+      _arch.plaInterconnects);
+
+    #undef FLUSH
+    #undef EXTRACT_ACTUAL
+    #undef EXTRACT
+    #undef EXTRACT_VALUE
+    #undef EXTRACT_VECTOR
+  }
+
 }

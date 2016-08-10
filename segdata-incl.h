@@ -120,5 +120,16 @@ struct seg_data_t {
       case Double:  return seg_data_t(data_f+(double)b);
     }
   }
+  
+  /** Subtracts a conversion of b to our internal data.
+    *
+    */
+  seg_data_t operator-(const seg_data_t &b) const {
+    switch(kind) {
+      default:
+      case Integer: return seg_data_t(data_i-(int64_t)b);
+      case Double:  return seg_data_t(data_f-(double)b);
+    }
+  }
 
 };

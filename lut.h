@@ -471,16 +471,6 @@ class LookupTable {
     void translate();
     void print_translation_parameters();
 
-protected:
-    /** Helper function to translate() a single segment for the PLA.
-      * It determines if a segment can be uniquely represented in
-      * a minimal selectionBits vector, if not it adds an interconnect
-      * for the first subsegment that can be and calls itself with
-      * the rest of the segment.
-      */
-    //void create_interconnect( segment_t* subseg, int* current_interconnect);
-    void bitvector_leftshift( uint64_t* bitvector, int len, int* current_bits,
-                            int additional_bits);
 };
 
 #endif
