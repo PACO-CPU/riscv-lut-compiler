@@ -58,7 +58,10 @@ struct unittest_concat_id(unittest_,id) : public alp::unittest_t { \
   } \
 } unittest_concat_id(_unittest_,id); \
 }
-
+#if ALPHA_UNITTESTS
 #define unittest(...) unittest_with_id(__COUNTER__,__LINE__,__VA_ARGS__)
+#else
+#define unittest(...)
+#endif
 } // namespace alp
 #endif

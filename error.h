@@ -175,4 +175,32 @@ class CommandLineError : public std::exception {
     }
 };
 
+/** Exception thrown when an the number of hardware resources (PLA interconnnects)
+  * is exceeded during compilation.
+  */
+class HWResourceExceededError : public std::exception {
+  public:
+    enum kind_t {
+      PLAInterconnects,
+    }; 
+  protected:
+    alp::string _msg;
+    kind_t _kind;
+  public:
+    /** Constructor.
+      */
+    HWResourceExceededError(kind_t kind) {
+      _kind=kind;
+      switch(kind) {
+        case PLAInterconnects: _msg="PLA interconnects exceeded"; break;
+      }
+    }
+
+    kind_t kind() const { return _kind; }
+
+    virtual const char *what() const noexcept {
+      return _msg.ptr;
+    }
+};
+
 #endif

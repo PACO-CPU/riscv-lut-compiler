@@ -43,6 +43,8 @@ void arch_config_t::parse(const char *ptr, size_t cb, const char *name) {
           numSegments=kv->val_num().data_i;
         KVTEST("wordSize",Integer)
           wordSize=kv->val_num().data_i;
+        KVTEST("inputWords",Integer)
+          inputWords=kv->val_num().data_i;
         KVTEST("segmentBits",Integer)
           segmentBits=kv->val_num().data_i;
         KVTEST("selectorBits",Integer)
@@ -61,6 +63,10 @@ void arch_config_t::parse(const char *ptr, size_t cb, const char *name) {
           domainCutoffThreshold=kv->val_num().data_f;
         KVTEST("resolutionWarnThreshold",Float)
           resolutionWarnThreshold=kv->val_num().data_f;
+        KVTEST("delay_inputDecoder",Integer)
+        KVTEST("delay_addressTranslator",Integer)
+        KVTEST("delay_interpolator",Integer)
+        KVTEST("delay_controller",Integer)
 
         } else {
           throw SyntaxError("unknown arch key-value",lex);

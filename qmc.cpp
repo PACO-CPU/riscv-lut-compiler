@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA*/
 #include <string>
 #include <stdlib.h>
 #include "qmc.h"
+#include "error.h"
 using namespace std;
 
 int MIN_BITS = 1;   //minimum bits to print
@@ -279,6 +280,9 @@ void write_interconnect(unsigned n, unsigned d, int* current_interconnect,
                        int arch_segmentBits, int arch_plaInterconnects){
   int count = 0;
   unsigned bits[arch_selectorBits];
+
+  if (*current_interconnect>=arch_plaInterconnects)
+    throw HWResourceExceededError(HWResourceExceededError::PLAInterconnects);
 
   // transfer Minterm from n (containing 1 or 0),
   // and d (containing don't-cares) into

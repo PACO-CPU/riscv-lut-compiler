@@ -290,8 +290,17 @@ static int run_lut_compilation(options_t &options) {
     options.computeOutputName();
     if (options.fOutputIntermediate) {
       lut->saveIntermediateFile(options.outputName.ptr);
-    } else if (options.fOutputDump) {
-      lut->translate();
+    } else {
+      try {
+        lut->translate();
+      } catch(HWResourceExceededError &e) {
+        fprintf(
+          stderr,
+          "\x1b[31;1mHardware resources exhausted during translation of %s: "
+          "%s\x1b[30;0m\n",
+          options.fnInput.ptr,e.what());
+        return 1;
+      }
       if (options.fOutputC) {
         lut->saveOutputFile(options.outputName.ptr);
       } else if (options.fOutputDump) {

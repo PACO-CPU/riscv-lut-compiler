@@ -510,27 +510,28 @@ void LookupTable::saveIntermediateFile(const char *fn) {
 
 void LookupTable::generateOutputFormat(alp::string &res) {
   res.clear();
+  res+="#include <stdint.h>\n";
   switch(_arch.wordSize) {
     case 32:
       res+=alp::string::Format(
-        "const uint32_t %s_config[%i]={",
+        "const uint32_t %s[%i]={",
         _ident.ptr,_config_words.len);
      
      if (_config_words.len>0) {
         res+=alp::string::Format("0x%.8xul",_config_words[0]&0xffffffff);
-        for(size_t i=0;i<_config_words.len;i++) {
+        for(size_t i=1;i<_config_words.len;i++) {
           res+=alp::string::Format(",0x%.8xul",_config_words[i]&0xffffffff);
         }
       }
       break;
     case 64:
       res+=alp::string::Format(
-        "const uint64_t %s_config[%i]={",
+        "const uint64_t %s[%i]={",
         _ident.ptr,_config_words.len);
       
       if (_config_words.len>0) {
         res+=alp::string::Format("0x%.16xuL",_config_words[0]);
-        for(size_t i=0;i<_config_words.len;i++) {
+        for(size_t i=1;i<_config_words.len;i++) {
           res+=alp::string::Format(",0x%.16xuL",_config_words[i]);
         }
       }

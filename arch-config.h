@@ -19,6 +19,7 @@ struct arch_config_t {
   enum {
     Default_numSegments = 8,
     Default_wordSize = 64,
+    Default_inputWords = 1,
 
     // 16 LUT records available
     Default_segmentBits = 4, 
@@ -40,6 +41,10 @@ struct arch_config_t {
     * never change.
     */
   int wordSize;
+
+  /** Number of words of input the LUT can handle internally.
+    */
+  int inputWords;
   
   /** Number bits required to uniquely select a segment in the LUT hardware
     * core.
@@ -97,6 +102,7 @@ struct arch_config_t {
   arch_config_t() : 
     numSegments(Default_numSegments),
     wordSize(Default_wordSize),
+    inputWords(Default_inputWords),
     segmentBits(Default_segmentBits),
     selectorBits(Default_selectorBits),
     interpolationBits(Default_interpolationBits),
