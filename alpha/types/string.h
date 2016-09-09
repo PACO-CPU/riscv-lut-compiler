@@ -362,7 +362,7 @@ template <class C> struct string_t {
       ParseHex,
     };
     state_t state=Base;
-    int nDigits;
+    int nDigits=0;
     dchar cParsed=0;
     
 
