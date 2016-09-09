@@ -1316,7 +1316,7 @@ void LookupTable::translate2() {
   //print_translation_parameters();
 
   // Variables of interest during translation
-  const int REG_WIDTH = 64;
+  int REG_WIDTH = _arch.wordSize;
   const uint64_t REG_MASK = 0xffffffffffffffff;
 
   // Allocate char arrays to hold config information.
