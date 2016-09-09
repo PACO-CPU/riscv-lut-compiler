@@ -1,4 +1,5 @@
 #include "lut.h"
+#include "qmc2.h"
 
 #undef yyFlexLexer
 #define yyFlexLexer BaseInputFlexLexer
@@ -530,9 +531,9 @@ void LookupTable::generateOutputFormat(alp::string &res) {
         _ident.ptr,_config_words.len);
       
       if (_config_words.len>0) {
-        res+=alp::string::Format("0x%.16xuL",_config_words[0]);
+        res+=alp::string::Format("0x%.16llxuL",_config_words[0]);
         for(size_t i=1;i<_config_words.len;i++) {
-          res+=alp::string::Format(",0x%.16xuL",_config_words[i]);
+          res+=alp::string::Format(",0x%.16llxuL",_config_words[i]);
         }
       }
       break;
@@ -1021,26 +1022,285 @@ void LookupTable::print_translation_parameters(){
   printf(
     "_arch.segmentBits: %i (2^segmentBits: # of possible different MAu inputs)\n",
     _arch.segmentBits);
-  // assert that number of segments does not exceed log2(segmentBits),
-  // meaning the number of LUT memory slots is sufficient
-  assert( (_segments.len >> _arch.segmentBits) == 0 &&
-          "translate: #of segments exceeds LUT memory slots");
   // number of input bits that the LUT multiply/add unit (MAu) uses by design
   printf("interpolationBits: %i\n", _arch.interpolationBits);
   // number of input bits that will used in this configuration (<= previous)
   printf("segment_interpolation_bits: %i\n", segment_interpolation_bits());
   // no idea!
   printf("_num_segments: %i\n", _num_segments);
+  printf("segments: %lu\n",_segments.len);
+  printf("segmentBits: %i\n",_arch.segmentBits);
+  printf("base: %i, incline: %i\n",_arch.base_bits,_arch.incline_bits);
   // no idea!
   printf("_num_primary_segments: %i\n", _num_primary_segments);
   // offset of the beginning of the first segment from input space, integer
   printf("_segment_space_offset: %li\n", _segment_space_offset.data_i );
   // log2 of the width of the input domain
   printf("_segment_space_width: %i\n", _segment_space_width );
+  // assert that number of segments does not exceed log2(segmentBits),
+  // meaning the number of LUT memory slots is sufficient
+  assert( (_segments.len < (1uL<< _arch.segmentBits)) == 0 &&
+          "translate: #of segments exceeds LUT memory slots");
 }
 
 
 void LookupTable::translate() {
+  assert( _segments.len > 0 && "translate: #of segments not larger than 0");
+
+  QMC qmc(_arch.selectorBits);
+  
+  //print_translation_parameters();
+
+  // Variables of interest during translation
+  const int REG_WIDTH = 64;
+  const uint64_t REG_MASK = 0xffffffffffffffff;
+
+  connection_plane_conf = new char[3*REG_WIDTH*(_arch.selectorBits
+				       +_arch.interpolationBits)];
+
+  /* Calculate LUT decoder configuration
+     - calculate *which* bits of the input are used for selection and
+       interpolation.
+     - calculate MinTerms for And plane of PLA
+     - Or plane: naive addresses for now
+   */
+  // 1. connection plane
+  // Connect interpolationBits for Multiply-Add unit
+  // Which LUT input bits are used for interpolation within segments?
+  // Counting from MSBs:
+  //   The selectorBits and following until a number of interpolationBits
+  //   is reached.
+  int interpolate_LSB = _segment_space_width - _arch.interpolationBits-_arch.selectorBits;
+  int interpolate_MSB = _segment_space_width;
+  //printf("interpolateLSB: %i, interpolateMSB: %i\n",
+  //       interpolate_LSB, interpolate_MSB);
+  // Connect selectorBits to PLA via connection plane
+  for( int interpolateBit = 0; interpolateBit<_arch.interpolationBits; 
+       interpolateBit++){
+    for( int registerBit = 0; registerBit<REG_WIDTH*3; registerBit++){
+      if( interpolate_LSB <= registerBit
+          && registerBit < interpolate_MSB  
+          && registerBit - interpolate_LSB == interpolateBit){ // connection
+        //printf("connected: regbit: %i, interpolatebit: %i\n",
+        //        registerBit, interpolateBit);
+        connection_plane_conf[interpolateBit*REG_WIDTH*3+registerBit] = true;
+      }else{ // no connection
+        connection_plane_conf[interpolateBit*REG_WIDTH*3+registerBit] = false;
+      }
+    }
+  }
+  // Which LUT input bits are used for segment selection?
+  // Counting from LSBs:
+  //   (_segment_space_width-_arch.selectorBits) to _segment_space_width
+  int select_LSB = _segment_space_width - _arch.selectorBits;
+  int select_MSB = _segment_space_width;
+  //printf("selLSB: %i, selMSB: %i\n", select_LSB, select_MSB);
+  int sco = _arch.interpolationBits*REG_WIDTH*3; //segment configuration offset
+  // Connect selectorBits to PLA via connection plane
+  for( int selectorBit = 0; selectorBit<_arch.selectorBits; selectorBit++){
+    for( int registerBit = 0; registerBit<REG_WIDTH*3; registerBit++){ // 3 rs
+      if( select_LSB <= registerBit
+          && registerBit < select_MSB  
+          && registerBit - select_LSB == selectorBit){ // connection
+        //printf("connected: regbit: %i, selbit: %i\n", registerBit, selectorBit);
+        connection_plane_conf[selectorBit*REG_WIDTH*3+registerBit+sco] = true;
+      }else{ // no connection
+        connection_plane_conf[selectorBit*REG_WIDTH*3+registerBit+sco] = false;
+      }
+    }
+  }
+  
+
+  // 2. PLA -- MinTerms and naive addresses
+  for( size_t current_segment = 0; current_segment < _segments.len;
+       current_segment++) {
+    segment_t &seg=_segments[current_segment];
+    for(size_t i=seg.prefix;i<seg.prefix+seg.width;i++) {
+      qmc.add_term(i,current_segment);
+    }
+  }
+  
+  qmc.minimize();
+  const alp::array_t<QMC::implicant_t*> &implicants=qmc.implicants();
+
+  if ((ssize_t)implicants.len>_arch.plaInterconnects) {
+    throw HWResourceExceededError(HWResourceExceededError::PLAInterconnects);
+  }
+
+  // number of words required to store specified number of bits
+  #define NWORDS(nbits) ( \
+    (nbits)/_arch.wordSize + (((nbits)%_arch.wordSize>0)?1:0) )
+  { // allocate bitstream data structure 
+
+    _config_words.setlen(
+      // RAM
+      NWORDS(_arch.base_bits+_arch.incline_bits)*(1<<_arch.segmentBits) +
+      // input decoder
+      NWORDS(3*_arch.wordSize)*(_arch.selectorBits+_arch.interpolationBits)+
+      // PLA AND plane
+      NWORDS(2*_arch.selectorBits)*_arch.plaInterconnects+
+      // PLA OR plane
+      NWORDS(_arch.plaInterconnects)*_arch.segmentBits);
+    memset(_config_words.ptr,0x55,8*_config_words.len);
+  }
+
+  { // write configuration bitstream word-by-word
+    // the configuration bitstream was allocated, now it is traversed through
+    // insert_pos, incrementally or decrementally.
+    uint64_t cur_word=0;
+    int cur_bits=0;
+    uint64_t *insert_pos=NULL;
+    bool insert_incr=true;
+
+    // write currently built word to bitstream vector, if not empty
+    #define FLUSH if (cur_bits>0) { \
+      if (insert_incr) \
+        *insert_pos++=cur_word&REG_MASK; \
+      else \
+        *insert_pos--=cur_word&REG_MASK; \
+      cur_word=0; \
+      cur_bits=0; \
+    }
+    
+    // write the bits LSBs of data to the currently constructed word, appending
+    // as many words as needed
+    #define WRITE_BITS(bits,data) { \
+      int _bits=bits; \
+      uint64_t _data=data; \
+      while (cur_bits+_bits>=REG_WIDTH) { \
+        int n=REG_WIDTH-cur_bits; \
+        if (n==REG_WIDTH) cur_word=_data; \
+        else cur_word|=(_data&((1uL<<n)-1))<<cur_bits; \
+        cur_bits=REG_WIDTH; \
+        FLUSH; \
+        _data>>=n; \
+        _bits-=n; \
+      } \
+      cur_word|=(_data&((1uL<<_bits)-1))<<cur_bits; \
+      cur_bits+=_bits; \
+    }
+    
+    // copy char-encoded bits to currently constructed word
+    #define EXTRACT_ACTUAL(ptr,bits) { \
+      for(int i_bit=0;i_bit<bits;i_bit++)  \
+        cur_word|=((ptr[i_bit]==true) ? 1 : 0) << (i_bit+cur_bits); \
+      cur_bits+=bits; \
+    }
+    
+    // extract a number of bits from a char-encoded stream of bits.
+    // appends as many words as needed to represent the bits.
+    #define EXTRACT(ptr,bits) if ((bits)>0) { \
+      int _bits=bits; \
+      char *_ptr=ptr; \
+      while (cur_bits+_bits>REG_WIDTH) { \
+        int n=REG_WIDTH-cur_bits; \
+        EXTRACT_ACTUAL(_ptr,n); \
+        FLUSH; \
+        _ptr+=n; \
+        _bits-=n; \
+      } \
+      EXTRACT_ACTUAL(_ptr,_bits); \
+    }
+    
+    // extract multi-word value from char-encoded stream of bits 
+    // and store in correct word order.
+    #define EXTRACT_VALUE(ptr,width) { \
+      /* number of _full_ words */ \
+      int _words=(width)/_arch.wordSize; \
+      /* extract high-order word if it aint a full one */ \
+      EXTRACT(ptr+_words*_arch.wordSize,(width)%_arch.wordSize); \
+      FLUSH; \
+      /* extract remainder */ \
+      for(int i_word=_words-1;i_word>-1;i_word--) { \
+        EXTRACT(ptr+i_word*_arch.wordSize,_arch.wordSize) \
+        FLUSH; \
+      } \
+    }
+    
+    // extract a multiple multi-word values
+    #define EXTRACT_VECTOR(base,count,width) { \
+      for(int i=0;i<(count);i++) \
+        EXTRACT_VALUE((base)+i*(width),(width)); \
+    }
+    
+    // insert RAM data at the beginning of the bitstream
+    insert_pos=_config_words.ptr;
+    insert_incr=true;
+    
+    for(size_t i=0;i<_segments.len;i++) {
+      uint64_t base,incline;
+      base=(int64_t)_segments[i].y0;
+      incline=(int64_t)(_segments[i].y1-_segments[i].y0);
+      incline/=(1<<_arch.interpolationBits)*_segments[i].width;
+
+      base-=incline*(1<<_arch.interpolationBits)*_segments[i].prefix;
+
+      WRITE_BITS(_arch.incline_bits,incline);
+      WRITE_BITS(_arch.base_bits,base);
+      FLUSH;
+    }
+
+
+    // start inserting chain registers at the very end to omit reversing later
+    insert_pos=_config_words.ptr+_config_words.len-1;
+    insert_incr=false;
+    EXTRACT_VECTOR(
+      connection_plane_conf,
+      _arch.selectorBits+_arch.interpolationBits,
+      3*_arch.wordSize);
+    
+    for(size_t i=0;i<implicants.len;i++) {
+      for(size_t j=0;j<(size_t)_arch.selectorBits;j++)
+        if (implicants[i]->term[j]==0) {WRITE_BITS(1,1) }
+        else { WRITE_BITS(1,0) }
+      for(size_t j=0;j<(size_t)_arch.selectorBits;j++)
+        if (implicants[i]->term[j]==1) { WRITE_BITS(1,1) }
+        else { WRITE_BITS(1,0) }
+      FLUSH;
+    }
+
+    for(size_t i=implicants.len;i<(size_t)_arch.plaInterconnects;i++) {
+      WRITE_BITS(2*_arch.selectorBits,0);
+      FLUSH;
+    }
+    
+    for(size_t i=0;i<(size_t)_arch.segmentBits;i++) {
+      ssize_t i0=_arch.plaInterconnects;
+      size_t cb=i0%REG_WIDTH;
+      i0-=i0%REG_WIDTH;
+      
+      while(i0>=(ssize_t)implicants.len) {
+        WRITE_BITS(cb,0);
+        FLUSH;
+        cb=REG_WIDTH;
+        i0-=cb;
+      }
+
+      while(i0>=0) {
+        for(size_t j=i0;(j<implicants.len)&&(j<i0+cb);j++) {
+          if (implicants[j]->impl&(1<<i)) { WRITE_BITS(1,1) }
+          else { WRITE_BITS(1,0) }
+        }
+        FLUSH;
+        cb=REG_WIDTH;
+        i0-=cb;
+      } 
+    }
+    
+    #undef NWORDS
+    #undef FLUSH
+    #undef EXTRACT_ACTUAL
+    #undef EXTRACT
+    #undef EXTRACT_VALUE
+    #undef EXTRACT_VECTOR
+    #undef WRITE_BITS
+  }
+
+}
+
+
+void LookupTable::translate2() {
+  print_translation_parameters();
   /** 
     * The translation function translates an arithmetical specification
     * of segments delivered by the compiler frontend into binary bitstreams
@@ -1143,7 +1403,7 @@ void LookupTable::translate() {
       and_plane_conf[(current_interconnect*2+1)*_arch.selectorBits+i]=true;
     }
     for(int i=0;i<_arch.segmentBits;i++) {
-      or_plane_conf[current_interconnect+_arch.plaInterconnects*i] = true;
+      or_plane_conf[current_interconnect+_arch.plaInterconnects*i] = false;
     }
   }
  
@@ -1162,7 +1422,7 @@ void LookupTable::translate() {
       // PLA AND plane
       NWORDS(2*_arch.selectorBits)*_arch.plaInterconnects+
       // PLA OR plane
-      NWORDS(2*_arch.plaInterconnects)*_arch.segmentBits);
+      NWORDS(_arch.plaInterconnects)*_arch.segmentBits);
     #undef NWORDS
   }
 
@@ -1192,6 +1452,7 @@ void LookupTable::translate() {
       while (cur_bits+_bits>REG_WIDTH) { \
         int n=REG_WIDTH-cur_bits; \
         cur_word|=(_data&((1uL<<n)-1))<<cur_bits; \
+        cur_bits=REG_WIDTH; \
         FLUSH; \
         _data>>=n; \
         _bits-=n; \
@@ -1284,6 +1545,7 @@ void LookupTable::translate() {
     #undef EXTRACT
     #undef EXTRACT_VALUE
     #undef EXTRACT_VECTOR
+    #undef WRITE_BITS
   }
 
 }

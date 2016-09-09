@@ -469,6 +469,10 @@ class LookupTable {
       * bitstream.
       */
     void translate();
+    /** Translates our set of segments into an architecture-specific
+      * bitstream.
+      */
+    void translate2();
     void print_translation_parameters();
 
 };
