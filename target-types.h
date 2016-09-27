@@ -33,6 +33,7 @@ struct target_type_t {
     OPT("float",Float,32)
     OPT("int",Int,32)
     OPT("uint",UInt,32)
+    OPT("long",Int,64)
     OPT("u64",Int,64)
     OPT("s64",Int,64)
     OPT("u32",Int,32)
